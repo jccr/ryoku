@@ -2,13 +2,12 @@
 
 Name:           asusctl
 Version:        6.4.0
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        ASUS laptop control daemon and Aura lighting CLI
 License:        MPL-2.0
 URL:            https://github.com/OpenGamingCollective/asusctl
 Source0:        %{url}/archive/refs/tags/%{version}.tar.gz#/asusctl-%{version}.tar.gz
 Source100:      %{name}-%{version}-vendor.tar.gz
-ExclusiveArch:  x86_64
 
 BuildRequires:  cargo
 BuildRequires:  rust
