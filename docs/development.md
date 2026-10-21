@@ -44,6 +44,12 @@ After displayed copy changes, regenerate translations by dispatching the
     partitioner (`install-partition-alongside.sh`) is a real loop-device test and
     needs root.
   - `installation/tui`: `go test ./...` (layout math + safety gates).
+  - `ryoku-shell-installer`: `tests/installer-unit.sh` vets and tests it (in a
+    Go container off Linux, since it compiles for Linux only), and
+    `tests/arch-arm-installer-plan.sh` dry-runs the aarch64 binary on Arch
+    Linux ARM and lists the planned packages ALARM lacks. Rebuild the aarch64
+    binary with `ryoku-shell-installer/build.sh`; CI checks it rebuilds byte
+    for byte.
   - `installation/tests/iso-stage-check.sh` stages the ISO twice and diffs, so the
     build stays byte-reproducible (skips cleanly without `go`/`cmake`/`ninja`).
   - `installation/tests/iso-preflight.sh` runs the whole root-free installer gate

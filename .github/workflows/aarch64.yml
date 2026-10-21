@@ -1,0 +1,31 @@
+name: aarch64
+
+# The aarch64 lane: Arch Linux ARM builds Ryoku from source until [ryoku]
+# publishes aarch64 packages. Runs natively on GitHub's arm64 runners.
+
+on:
+  pull_request:
+    paths:
+      - 'ryoku-shell-installer/**'
+      - 'system/packages/base.packages'
+      - 'tests/arch-arm-installer-plan.sh'
+      - '.github/workflows/aarch64.yml'
+  push:
+    branches:
+      - main
+      - unstable-dev
+    paths:
+      - 'ryoku-shell-installer/**'
+      - 'system/packages/base.packages'
+      - 'tests/arch-arm-installer-plan.sh'
+      - '.github/workflows/aarch64.yml'
+
+jobs:
+  installer-plan:
+    name: Installer dry-run plan on Arch Linux ARM
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check the source lane on Arch Linux ARM
+        run: bash tests/arch-arm-installer-plan.sh
