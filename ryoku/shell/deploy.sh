@@ -1165,13 +1165,29 @@ if [[ -x "$bindir/ryotunes" ]] && [[ -f "$HOME/.local/share/ryoku/ryotunes.commi
     "$HOME/.local/share/ryoku/ryotunes.commit" "$appshare"/icons/hicolor/*/apps/ryotunes.png
   say "retired the locally built ryotunes (the package takes over)"
 fi
-if command -v sudo >/dev/null 2>&1 && command -v pacman >/dev/null 2>&1; then
+_rbase="https://repo.ryoku.dev/stable"
+case "${RYOKU_CHANNEL:-$(sed -n 's/^RYOKU_CHANNEL=//p' "$HOME/.config/environment.d/ryoku.conf" 2>/dev/null)}" in
+  unstable-dev) _rserver="$_rbase/channels/testing/\$arch" ;;
+  *)            _rserver="$_rbase/\$arch" ;;
+esac
+# [ryoku] publishes x86_64 only so far: elsewhere (aarch64 builds from source)
+# the stanza goes in only once the channel serves this arch, because a server
+# with no database fails every later pacman -Syu. 000 (offline) touches nothing.
+_rarch="$(uname -m)"
+_rserves=200
+if [[ $_rarch != x86_64 ]] && command -v pacman >/dev/null 2>&1; then
+  _rserves="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "${_rserver//\$arch/$_rarch}/ryoku.db" || true)"
+fi
+if [[ $_rserves != 200 ]]; then
+  _rcur="$(awk '/^\[ryoku\]/{f=1;next} /^\[/{f=0} f && /^Server/{sub(/^Server *= */,""); print; exit}' /etc/pacman.conf 2>/dev/null)"
+  if [[ $_rserves == 404 && $_rcur == "$_rbase"/* ]] && command -v sudo >/dev/null 2>&1; then
+    _pconf="$(awk '/^\[ryoku\]/{f=1;next} /^\[/{f=0} !f' /etc/pacman.conf)"
+    printf '%s\n' "$_pconf" | sudo tee /etc/pacman.conf >/dev/null
+    say "removed the [ryoku] repo: it does not serve $_rarch yet"
+  fi
+  say "skipping packaged externals ([ryoku] does not serve $_rarch yet)"
+elif command -v sudo >/dev/null 2>&1 && command -v pacman >/dev/null 2>&1; then
   _rkey=EB6D3C0F55A7B3CABA6B2838847B274F025DD6E3
-  _rbase="https://repo.ryoku.dev/stable"
-  case "${RYOKU_CHANNEL:-$(sed -n 's/^RYOKU_CHANNEL=//p' "$HOME/.config/environment.d/ryoku.conf" 2>/dev/null)}" in
-    unstable-dev) _rserver="$_rbase/channels/testing/\$arch" ;;
-    *)            _rserver="$_rbase/\$arch" ;;
-  esac
   _rcur="$(awk '/^\[ryoku\]/{f=1;next} /^\[/{f=0} f && /^Server/{sub(/^Server *= */,""); print; exit}' /etc/pacman.conf)"
   if [[ -z "$_rcur" ]]; then
     say "adding the [ryoku] repo ($_rserver) so packaged externals install from it"
