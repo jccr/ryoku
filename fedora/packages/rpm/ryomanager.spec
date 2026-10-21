@@ -4,7 +4,7 @@
 
 Name:           ryomanager
 Version:        0.1.0.r27.g459c671
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        System monitor and process manager for Ryoku
 License:        GPL-3.0-only
 URL:            https://github.com/Ryoku-dev/ryomanager
@@ -12,7 +12,6 @@ Source0:        %{url}/archive/%{ryomanager_commit}.tar.gz#/%{name}-%{ryomanager
 Source1:        %{name}-%{version}-node_modules.tar.gz
 Source2:        %{name}.desktop
 Source100:      %{name}-%{version}-vendor.tar.gz
-ExclusiveArch:  x86_64
 
 BuildRequires:  desktop-file-utils
 BuildRequires:  gcc
