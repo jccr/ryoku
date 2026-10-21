@@ -153,6 +153,15 @@ jobs:
         # own (non-reproduced) build and always fails.
         run: sha256sum -c ryoku-shell-install.sha256 ryoku-shell-install-aarch64.sha256
 
+      - name: Committed aarch64 binary rebuilds byte for byte
+        shell: bash
+        working-directory: ryoku-shell-installer
+        # build.sh pins go.mod's toolchain and builds static and path-free, so
+        # a stale binary (source changed, binary not rebuilt) shows up here.
+        run: |
+          ./build.sh aarch64
+          git diff --exit-code -- ryoku-shell-install-aarch64 ryoku-shell-install-aarch64.sha256
+
       - name: Build, vet, and test
         shell: bash
         working-directory: ryoku-shell-installer
