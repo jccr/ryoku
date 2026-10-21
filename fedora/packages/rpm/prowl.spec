@@ -3,13 +3,12 @@
 
 Name:           prowl
 Version:        0.17.2
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        Prowl model gateway and code intelligence for Ryoku Rashin
 License:        MIT
 URL:            https://github.com/neur0map/prowl
 Source0:        https://github.com/neur0map/prowl/archive/%{prowl_commit}.tar.gz#/prowl-%{prowl_commit}.tar.gz
 Source100:      %{name}-%{version}-vendor.tar.gz
-ExclusiveArch:  x86_64
 %global debug_package %{nil}
 BuildRequires:  gcc
 BuildRequires:  golang >= 1.26.4
