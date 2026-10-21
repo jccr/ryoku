@@ -173,6 +173,8 @@ Session packages such as SDDM, PipeWire and NetworkManager are left installed.
 ```bash
 go build -trimpath -o ryoku-shell-install .   # rebuild
 sha256sum ryoku-shell-install > ryoku-shell-install.sha256
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -o ryoku-shell-install-aarch64 .
+sha256sum ryoku-shell-install-aarch64 > ryoku-shell-install-aarch64.sha256
 go test ./...
 ```
 

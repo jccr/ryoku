@@ -31,7 +31,7 @@ main() {
   # so refuse honestly instead of dying on the package-manager guard below.
   [[ ! -e /etc/NIXOS ]] || die "NixOS is not supported yet; use the flake instead"
 
-  local ryoku_family dnf_cmd
+  local ryoku_family dnf_cmd bin
   if command -v pacman > /dev/null 2>&1; then
     ryoku_family=arch
   elif command -v apt-get > /dev/null 2>&1; then
@@ -48,7 +48,14 @@ main() {
   else
     die "unsupported distribution: Ryoku installs on Arch-based, Debian-based, Void and Fedora systems"
   fi
-  [[ $(uname -m) == x86_64 ]] || die "Ryoku ships x86_64 builds only"
+  case "$(uname -m)" in
+    x86_64) bin=ryoku-shell-install ;;
+    aarch64)
+      [[ $ryoku_family == arch ]] || die "off x86_64, Ryoku installs on Arch-based systems only for now"
+      bin=ryoku-shell-install-aarch64
+      ;;
+    *) die "Ryoku ships x86_64 and aarch64 builds only" ;;
+  esac
   if [[ $ryoku_family == fedora && -e /run/ostree-booted ]]; then
     die "rpm-ostree systems are not supported; use a mutable Fedora Workstation or Server install"
   fi
@@ -75,6 +82,8 @@ main() {
   fi
   if [[ $ryoku_family == debian ]]; then
     say "Debian detected: the desktop is built from source, which takes a few minutes"
+  elif [[ $bin == ryoku-shell-install-aarch64 ]]; then
+    say "aarch64 detected: the desktop is built from source, which takes a few minutes"
   fi
 
   # global, not local: the EXIT trap fires after main returns, when a local is
@@ -83,19 +92,19 @@ main() {
   trap 'rm -rf "$work"' EXIT
 
   say "// fetching  Ryoku shell installer (${ref})"
-  curl -fsSL --retry 3 -o "$work/ryoku-shell-install" "$raw/ryoku-shell-install"
-  curl -fsSL --retry 3 -o "$work/ryoku-shell-install.sha256" "$raw/ryoku-shell-install.sha256"
-  (cd "$work" && sha256sum --check --quiet ryoku-shell-install.sha256) \
+  curl -fsSL --retry 3 -o "$work/$bin" "$raw/$bin"
+  curl -fsSL --retry 3 -o "$work/$bin.sha256" "$raw/$bin.sha256"
+  (cd "$work" && sha256sum --check --quiet "$bin.sha256") \
     || die "checksum mismatch on the downloaded installer; try again"
-  chmod +x "$work/ryoku-shell-install"
+  chmod +x "$work/$bin"
 
   say "// starting  Ryoku shell installer"
   local rc=0
   # piped stdin (curl | bash) is useless to a TUI; hand it the real terminal.
   if [[ ! -t 0 && -r /dev/tty ]]; then
-    RYOKU_SHELL_REF="$ref" "$work/ryoku-shell-install" "$@" < /dev/tty || rc=$?
+    RYOKU_SHELL_REF="$ref" "$work/$bin" "$@" < /dev/tty || rc=$?
   else
-    RYOKU_SHELL_REF="$ref" "$work/ryoku-shell-install" "$@" || rc=$?
+    RYOKU_SHELL_REF="$ref" "$work/$bin" "$@" || rc=$?
   fi
   return "$rc"
 }
