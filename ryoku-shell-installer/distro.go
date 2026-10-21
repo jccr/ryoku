@@ -69,6 +69,7 @@ var archSource = &distro{
 		"base-devel", "go", "cmake", "ninja", "pkgconf", "meson",
 		"wayland", "wayland-protocols", "vulkan-headers",
 		"qt6-shadertools", "qt6-declarative", "qt6-multimedia", "gtk3", "webkit2gtk-4.1",
+		"libcanberra", "pixman", "libdrm", "libinput", "libxkbcommon", "pango", "cairo",
 	},
 	runtime: []string{
 		"gum", "inotify-tools", "qrencode", "qt6-imageformats", "socat", "uv", "zenity",
