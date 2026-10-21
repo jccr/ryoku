@@ -22,6 +22,9 @@ reload=1
 here="$(cd "$(dirname "$0")" && pwd)"
 cfg="${XDG_CONFIG_HOME:-$HOME/.config}"
 bindir="$HOME/.local/bin"
+# what this installs into bindir is started by name below (the config reload,
+# the Hub's plugin build), as the session does (hyprland/modules/env.lua)
+case ":$PATH:" in *":$bindir:"*) ;; *) export PATH="$bindir:$PATH" ;; esac
 repo_root="$(cd "$here/../.." && pwd)"
 say() { printf '  %s\n' "$*"; }
 
