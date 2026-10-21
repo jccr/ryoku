@@ -1,11 +1,10 @@
 Name:           dualsensectl
 Version:        0.7
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Control Sony DualSense controller features
 License:        GPL-2.0-only
 URL:            https://github.com/nowrep/dualsensectl
 Source0:        %{url}/archive/v%{version}.tar.gz#/%{name}-%{version}.tar.gz
-ExclusiveArch:  x86_64
 
 BuildRequires:  gcc
 BuildRequires:  meson
