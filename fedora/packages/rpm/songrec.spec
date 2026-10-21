@@ -2,13 +2,12 @@
 
 Name:           songrec
 Version:        0.7.5
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Unofficial Shazam client for Linux
 License:        GPL-3.0-only
 URL:            https://github.com/marin-m/SongRec
 Source0:        %{url}/archive/%{version}.tar.gz#/%{name}-%{version}.tar.gz
 Source100:      %{name}-%{version}-vendor.tar.gz
-ExclusiveArch:  x86_64
 
 BuildRequires:  alsa-lib-devel
 BuildRequires:  cargo
