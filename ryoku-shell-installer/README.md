@@ -171,12 +171,17 @@ Session packages such as SDDM, PipeWire and NetworkManager are left installed.
 ## Development
 
 ```bash
-go build -trimpath -o ryoku-shell-install .   # rebuild
+go build -trimpath -o ryoku-shell-install .   # rebuild the x86_64 binary
 sha256sum ryoku-shell-install > ryoku-shell-install.sha256
-GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -o ryoku-shell-install-aarch64 .
-sha256sum ryoku-shell-install-aarch64 > ryoku-shell-install-aarch64.sha256
-go test ./...
+./build.sh                                    # rebuild the aarch64 binary
+../tests/installer-unit.sh                    # vet and test (in a container off Linux)
+../tests/arch-arm-installer-plan.sh           # aarch64 dry-run on Arch Linux ARM
 ```
+
+`build.sh` pins `go.mod`'s toolchain and builds static and path-free, so the
+aarch64 binary is the same bytes on any host and CI rebuilds it to check.
+Never run `go build ./...` here without `-o`: it overwrites the committed
+x86_64 binary.
 
 The binary and its checksum are committed (same convention as
 `installation/tui/ryoku-tui`) so `install.sh` can fetch them from
