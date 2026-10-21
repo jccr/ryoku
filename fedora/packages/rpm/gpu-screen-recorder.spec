@@ -1,11 +1,10 @@
 Name:           gpu-screen-recorder
 Version:        6.1.3
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Fast GPU-accelerated screen recorder for Linux
 License:        GPL-3.0-only
 URL:            https://git.dec05eba.com/gpu-screen-recorder
 Source0:        https://dec05eba.com/snapshot/gpu-screen-recorder.git.%{version}.tar.gz#/%{name}-%{version}.tar.gz
-ExclusiveArch:  x86_64
 %global debug_package %{nil}
 
 BuildRequires:  gcc
