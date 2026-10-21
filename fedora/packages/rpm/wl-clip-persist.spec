@@ -2,13 +2,12 @@
 
 Name:           wl-clip-persist
 Version:        0.5.0
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Keep the Wayland clipboard after applications close
 License:        MIT
 URL:            https://github.com/Linus789/wl-clip-persist
 Source0:        %{url}/archive/v%{version}.tar.gz#/%{name}-%{version}.tar.gz
 Source100:      %{name}-%{version}-vendor.tar.gz
-ExclusiveArch:  x86_64
 %global debug_package %{nil}
 
 BuildRequires:  cargo
