@@ -25,7 +25,7 @@ type facts struct {
 	distroID    string
 	distroLike  string
 	distroName  string
-	archX86     bool
+	machine     string
 	pacman      bool
 	archLike    bool
 	distro      *distro
@@ -259,10 +259,10 @@ func detect() *facts {
 	if b, err := os.ReadFile("/etc/os-release"); err == nil {
 		f.distroID, f.distroLike, f.distroName = parseOSRelease(string(b))
 	}
-	f.archX86 = out("uname", "-m") == "x86_64"
+	f.machine = out("uname", "-m")
 	f.pacman = has("pacman")
 	f.archLike = f.distroID == "arch" || strings.Contains(f.distroLike, "arch")
-	if d := detectDistro(f.distroID, f.distroLike); d != nil {
+	if d := laneFor(detectDistro(f.distroID, f.distroLike), f.machine); d != nil {
 		activeDistro = d
 		f.distro = d
 	}

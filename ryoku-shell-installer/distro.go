@@ -53,6 +53,53 @@ var archLinux = &distro{
 	queryCmd:   []string{"pacman", "-Qq"},
 }
 
+// archSource is Arch on an architecture the [ryoku] repo does not serve yet
+// (aarch64, Asahi ALARM first): the desktop builds from the payload as on
+// Debian, so the names only [ryoku], the AUR or x86_64 provide are skipped.
+var archSource = &distro{
+	id:         "arch",
+	name:       "Arch (from source)",
+	fromSource: true,
+	installCmd: archLinux.installCmd,
+	removeCmd:  archLinux.removeCmd,
+	updateCmd:  archLinux.updateCmd,
+	refreshCmd: archLinux.refreshCmd,
+	queryCmd:   archLinux.queryCmd,
+	build: []string{
+		"base-devel", "go", "cmake", "ninja", "pkgconf", "meson",
+		"wayland", "wayland-protocols", "vulkan-headers",
+		"qt6-shadertools", "qt6-declarative", "qt6-multimedia", "gtk3", "webkit2gtk-4.1",
+	},
+	runtime: []string{
+		"gum", "inotify-tools", "qrencode", "qt6-imageformats", "socat", "uv", "zenity",
+	},
+	rename: map[string]string{
+		// the board's own kernel (linux-asahi, linux-aarch64) owns its headers
+		"linux-headers": "",
+		"dkms":          "",
+		"edk2-ovmf":     "",
+
+		"blesh":                "",
+		"broadcom-bt-firmware": "",
+		"game-devices-udev":    "",
+		"otf-space-grotesk":    "",
+		"ryoku-oh-my-zsh":      "",
+		"ttf-maple-mono-nf":    "",
+		"ttf-readex-pro":       "",
+		"ttf-rubik-vf":         "",
+		"xpadneo-dkms":         "",
+	},
+}
+
+// laneFor picks how a detected distro installs on this machine: Arch off
+// x86_64 builds from source because no [ryoku] database exists for it.
+func laneFor(d *distro, machine string) *distro {
+	if d == archLinux && machine != "x86_64" {
+		return archSource
+	}
+	return d
+}
+
 // Package names verified against api.ftp-master.debian.org (testing/unstable).
 var debianLinux = &distro{
 	id:         "debian",
@@ -303,7 +350,7 @@ func detectHostDistro() *distro {
 		return nil
 	}
 	id, like, _ := parseOSRelease(string(b))
-	d := detectDistro(id, like)
+	d := laneFor(detectDistro(id, like), out("uname", "-m"))
 	if d != nil {
 		activeDistro = d
 	}
