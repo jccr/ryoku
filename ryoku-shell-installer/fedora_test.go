@@ -405,6 +405,7 @@ func TestFedoraCompositorsComeFromEditionTable(t *testing.T) {
 }
 
 func TestFedoraSessionHandlesGDMKDEAndPowerProfiles(t *testing.T) {
+	t.Setenv("RYOKU_HOST_INIT", "systemd")
 	d := newFedoraLinux()
 	f := &facts{distro: d, currentDM: "gdm.service", kdeSddmConf: true, username: "ryoku"}
 	p := defaultPlan(f, []string{"niri"})
