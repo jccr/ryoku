@@ -151,7 +151,7 @@ jobs:
         # runs BEFORE the build: `go build ./...` overwrites the committed
         # binary in the checkout, so checking afterwards compares the runner's
         # own (non-reproduced) build and always fails.
-        run: sha256sum -c ryoku-shell-install.sha256
+        run: sha256sum -c ryoku-shell-install.sha256 ryoku-shell-install-aarch64.sha256
 
       - name: Build, vet, and test
         shell: bash
