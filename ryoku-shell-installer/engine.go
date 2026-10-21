@@ -2196,7 +2196,10 @@ func stepBuild(e *engine) error {
 		return errors.New(i18n.T("payload is missing ryoku/shell/deploy.sh"))
 	}
 	e.say(i18n.T("building the desktop from the payload (this takes a few minutes)"))
-	return e.cmd(filepath.Join(e.payload, "ryoku", "shell"), nil, "bash", script)
+	// no session runs yet, so name the chosen compositor for the provider calls
+	// the build makes (the compositor plugins), as the Void ISO installer does
+	env := []string{"RYOKU_WM=" + e.p.compositor}
+	return e.cmd(filepath.Join(e.payload, "ryoku", "shell"), env, "bash", script)
 }
 
 func fixRunitSessionWrappers(e *engine) error {
