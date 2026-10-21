@@ -1261,8 +1261,8 @@ func main() {
 	if d == nil {
 		die(i18n.T("unsupported distribution: Ryoku installs on Arch-based, Debian-based, Void and Fedora systems"))
 	}
-	if out("uname", "-m") != "x86_64" {
-		die(i18n.T("Ryoku ships x86_64 builds only"))
+	if out("uname", "-m") != "x86_64" && d != archSource {
+		die(i18n.T("off x86_64, Ryoku installs on Arch-based systems only for now"))
 	}
 	if d.id == "fedora" {
 		if _, err := os.Stat("/run/ostree-booted"); err == nil {

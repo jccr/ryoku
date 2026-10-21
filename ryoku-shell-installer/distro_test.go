@@ -76,6 +76,12 @@ func TestStepsPerDistro(t *testing.T) {
 		t.Errorf("arch steps = %q, want %q", arch, wantArch)
 	}
 
+	archSrc := strings.Join(ids(&facts{distro: archSource}), " ")
+	wantArchSrc := "legacy sysupgrade tools payload backup conflicts packages fonts build session configs shell doctor verify"
+	if archSrc != wantArchSrc {
+		t.Errorf("arch source steps = %q, want %q", archSrc, wantArchSrc)
+	}
+
 	debian := strings.Join(ids(&facts{distro: debianLinux}), " ")
 	wantDebian := "sysupgrade tools payload backup conflicts packages fonts build session configs shell doctor verify"
 	if debian != wantDebian {
@@ -94,6 +100,52 @@ func TestStepsPerDistro(t *testing.T) {
 	wantFedora := "sysupgrade tools payload backup repo conflicts packages drivers session configs shell doctor verify"
 	if fedora != wantFedora {
 		t.Errorf("fedora steps = %q, want %q", fedora, wantFedora)
+	}
+}
+
+func TestLaneFor(t *testing.T) {
+	cases := []struct {
+		d       *distro
+		machine string
+		want    *distro
+	}{
+		{archLinux, "x86_64", archLinux},
+		{archLinux, "aarch64", archSource},
+		{debianLinux, "aarch64", debianLinux},
+		{fedoraLinux, "aarch64", fedoraLinux},
+		{nil, "aarch64", nil},
+	}
+	for _, c := range cases {
+		if got := laneFor(c.d, c.machine); got != c.want {
+			t.Errorf("laneFor(%v, %q) = %v, want %v", c.d, c.machine, got, c.want)
+		}
+	}
+}
+
+// the source lane skips what only [ryoku], the AUR or x86_64 carry and adds
+// the toolchain deploy.sh builds with.
+func TestArchSourcePackageSet(t *testing.T) {
+	base := []string{"linux-headers", "xpadneo-dkms", "ryoku-oh-my-zsh", "kitty", "quickshell"}
+	got := strings.Join(sourcePackageSet(archSource, base), " ")
+	for _, gone := range []string{"linux-headers", "xpadneo-dkms", "ryoku-oh-my-zsh"} {
+		if strings.Contains(" "+got+" ", " "+gone+" ") {
+			t.Errorf("source set keeps %s: %q", gone, got)
+		}
+	}
+	for _, kept := range []string{"kitty", "quickshell", "go", "cmake", "qt6-shadertools"} {
+		if !strings.Contains(" "+got+" ", " "+kept+" ") {
+			t.Errorf("source set lacks %s: %q", kept, got)
+		}
+	}
+}
+
+func TestUnresolvedTargets(t *testing.T) {
+	out := "error: target not found: songrec\n" +
+		"https://mirror.archlinuxarm.org/aarch64/extra/kitty-0.44-1-aarch64.pkg.tar.xz\n" +
+		"error: target not found: waifu2x-ncnn-vulkan\n"
+	got := unresolvedTargets(out)
+	if len(got) != 2 || !got["songrec"] || !got["waifu2x-ncnn-vulkan"] {
+		t.Errorf("unresolvedTargets = %v", got)
 	}
 }
 

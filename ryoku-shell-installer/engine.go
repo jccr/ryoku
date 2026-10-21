@@ -557,6 +557,10 @@ func newEngine(f *facts, p *plan, dry bool, ref, payloadOverride string) *engine
 		if src && (s.id == "repo" || s.id == "drivers") {
 			continue
 		}
+		// the AUR extras are -bin builds and the CachyOS layer is x86-64-v3
+		if src && arch && (s.id == "aur" || s.id == "cachyos-layer") {
+			continue
+		}
 		if sourceOnly[s.id] && !src {
 			continue
 		}
@@ -1942,6 +1946,10 @@ func stepPackages(e *engine) error {
 		// no [ryoku] repository here: the desktop is built from the payload, so
 		// install its dependencies plus the toolchain that builds it.
 		pkgs = sourcePackageSet(d, base)
+		if d.id == "arch" {
+			// no ryoku-desktop-<compositor> here to pull the compositor in
+			pkgs = append(pkgs, e.p.compositor)
+		}
 	} else {
 		pkgs = append(append([]string{}, ryokuPkgs...), base...)
 		// name the chosen variant so pacman installs it directly instead of
@@ -1976,6 +1984,9 @@ func stepPackages(e *engine) error {
 	pkgs = filterChoicePackages(pkgs, e.p)
 	pkgs = uniquePackages(pkgs)
 	pkgs = e.dropSatisfied(pkgs)
+	if d == archSource {
+		pkgs = e.dropUnresolvable(pkgs)
+	}
 	if d.id == "arch" {
 		// a .part resumed against a mirror whose bytes moved on trips pacman's
 		// size cap on every retry; dropping resume state just costs a re-download.
@@ -1986,6 +1997,47 @@ func stepPackages(e *engine) error {
 	// -Syu, not -S: a resumed run holds the db its first attempt synced, and
 	// a publish in between replaces or prunes the files that db points at.
 	return installPackagePlan(e, d, pkgs)
+}
+
+// dropUnresolvable keeps what the sync databases carry: an Arch port such as
+// ALARM lacks some x86_64 names, and one missing target fails the whole -Syu.
+// The dropped names are said aloud; they are what the port still has to carry.
+func (e *engine) dropUnresolvable(pkgs []string) []string {
+	if e.dry || len(pkgs) == 0 {
+		return pkgs
+	}
+	// sysupgrade already synced the databases; -Sp only resolves, it installs nothing.
+	out, _ := exec.Command("pacman", append([]string{"-Sp", "--print-format", "%n"}, pkgs...)...).CombinedOutput()
+	missing := unresolvedTargets(string(out))
+	// nothing resolving means unsynced databases, not a port missing everything
+	if len(missing) == 0 || len(missing) == len(uniquePackages(pkgs)) {
+		return pkgs
+	}
+	keep := make([]string, 0, len(pkgs))
+	for _, pkg := range pkgs {
+		if !missing[pkg] {
+			keep = append(keep, pkg)
+		}
+	}
+	names := make([]string, 0, len(missing))
+	for _, pkg := range pkgs {
+		if missing[pkg] {
+			names = append(names, pkg)
+		}
+	}
+	e.say(i18n.Tf("skipping %d packages this architecture's repos do not carry: %s", len(names), strings.Join(names, " ")))
+	return keep
+}
+
+// unresolvedTargets reads pacman's "error: target not found: <name>" lines.
+func unresolvedTargets(out string) map[string]bool {
+	missing := map[string]bool{}
+	for _, line := range strings.Split(out, "\n") {
+		if name, ok := strings.CutPrefix(strings.TrimSpace(line), "error: target not found: "); ok {
+			missing[strings.TrimSpace(name)] = true
+		}
+	}
+	return missing
 }
 
 func cachyosV3Supported() bool {
