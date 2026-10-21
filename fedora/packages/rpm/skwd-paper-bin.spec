@@ -4,14 +4,13 @@
 
 Name:           skwd-paper-bin
 Version:        1.0.0_beta.23
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        Wallpaper Engine renderer backend for Ryogami
 License:        GPL-3.0-or-later
 URL:            https://github.com/liixini/skwd-paper
 Source0:        %{url}/archive/%{skwd_commit}.tar.gz#/skwd-paper-%{version}.tar.gz
 Source1:        https://ffmpeg.org/releases/ffmpeg-%{ffmpeg_version}.tar.xz
 Source100:      %{name}-%{version}-vendor.tar.gz
-ExclusiveArch:  x86_64
 
 BuildRequires:  alsa-lib-devel
 BuildRequires:  cargo
