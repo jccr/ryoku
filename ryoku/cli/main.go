@@ -45,6 +45,7 @@ import (
 
 func main() {
 	scrubQuickshellCrashEnv()
+	preferOwnBinDir()
 	i18n.Use("") // reads /usr/share/ryoku/i18n on an installed Ryoku
 	if len(os.Args) < 2 {
 		usage()

@@ -584,6 +584,11 @@ func newEngine(f *facts, p *plan, dry bool, ref, payloadOverride string) *engine
 		freshAccount: !f.ryokuOnBox && os.IsNotExist(shellErr),
 	}
 	e.resolvePayload()
+	if e.d().fromSource && !dry && f.homeDir != "" {
+		// the build installs the ryoku-* programs in ~/.local/bin and they start
+		// each other by name, as the session lets them (hyprland/modules/env.lua)
+		os.Setenv("PATH", filepath.Join(f.homeDir, ".local", "bin")+":"+os.Getenv("PATH"))
+	}
 	e.openLog()
 	// resuming continues the previous run's backup dir so restore.sh stays
 	// one script; declining starts a fresh state (the file is rewritten at
