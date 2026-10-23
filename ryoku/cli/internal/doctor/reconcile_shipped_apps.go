@@ -63,12 +63,15 @@ func planShippedApps(apps []shippedApp, installed, asDep, seen map[string]bool) 
 	return p
 }
 
+// supportedShippedApps drops what this host cannot install: a package its table
+// does not provide, and one it maps that no enabled repository builds for this
+// machine (waifu2x-ncnn-vulkan on aarch64). Either would fail the whole batch.
 func supportedShippedApps(manager host.PackageManager, apps []shippedApp) (supported []shippedApp, unavailable []string) {
 	if manager == host.Pacman {
 		return apps, nil
 	}
 	for _, app := range apps {
-		if doctorPackageUnavailable(manager, app.pkg) {
+		if availability := doctorPackageAvailability(app.pkg); availability == host.ExitNotProvided || availability == host.ExitFalse {
 			unavailable = append(unavailable, app.pkg)
 			continue
 		}

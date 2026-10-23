@@ -3,6 +3,8 @@ package doctor
 import (
 	"strings"
 	"testing"
+
+	"ryoku-cli/internal/host"
 )
 
 func TestPlanShippedApps(t *testing.T) {
@@ -111,6 +113,32 @@ func TestReconcileShippedAppsClaimsDependencyInstalls(t *testing.T) {
 	got := reconcileShippedApps(false)
 	if got.status != recFixed || strings.Join(claimed, ",") != "kitty" {
 		t.Fatalf("result = %+v, claimed = %v", got, claimed)
+	}
+}
+
+func TestSupportedShippedAppsSkipsWhatThisHostCannotInstall(t *testing.T) {
+	oldAvailability := doctorPackageAvailability
+	t.Cleanup(func() { doctorPackageAvailability = oldAvailability })
+	doctorPackageAvailability = func(name string) int {
+		switch name {
+		case "waifu2x-ncnn-vulkan":
+			return host.ExitFalse
+		case "untranslated":
+			return host.ExitNotProvided
+		}
+		return host.ExitOK
+	}
+	apps := []shippedApp{{pkg: "fish"}, {pkg: "waifu2x-ncnn-vulkan"}, {pkg: "untranslated"}}
+
+	supported, unavailable := supportedShippedApps(host.DNF, apps)
+	if len(supported) != 1 || supported[0].pkg != "fish" {
+		t.Fatalf("supported = %v, want only fish", supported)
+	}
+	if strings.Join(unavailable, ",") != "waifu2x-ncnn-vulkan,untranslated" {
+		t.Fatalf("unavailable = %v", unavailable)
+	}
+	if supported, unavailable := supportedShippedApps(host.Pacman, apps); len(supported) != 3 || unavailable != nil {
+		t.Fatalf("pacman: supported = %v, unavailable = %v; pacman installs every shipped app", supported, unavailable)
 	}
 }
 
