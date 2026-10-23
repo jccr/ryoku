@@ -26,7 +26,7 @@ extra = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(extra)
 # The buildroot has no font cache consumers; RPM's font trigger updates it.
 extra.shutil.which = lambda name: None
-for name in extra.RELEASES:
+for name in extra.EXTRAS:
     extra.install(name, Path('stage/usr'))
 PY
 mkdir -p stage/usr/share/ryoku

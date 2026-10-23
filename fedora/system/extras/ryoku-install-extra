@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 import os
+import platform
 import posixpath
 from pathlib import Path
 import shutil
@@ -16,13 +17,19 @@ import zipfile
 
 RELEASES = {
     "qmk-hid": ("0.1.11", "https://github.com/FrameworkComputer/qmk_hid/releases/download/v0.1.11/qmk_hid_linux_v0.1.11.zip", "57460728df3777d0abd2f2b464dea898c1fdc1cc6524ede1c2854fa9c8f027dc", "bin/qmk_hid"),
+    "qmk-hid-aarch64": ("0.1.11", "https://github.com/jccr/qmk_hid/releases/download/v0.1.11/qmk_hid_linux_aarch64_v0.1.11.zip", "e5c5633350fef9cb17408db7126f76d78a62a46dfd5604754acdf5fab39e5005", "bin/qmk_hid"),
     "matugen": ("4.2.0", "https://github.com/InioX/matugen/releases/download/v4.2.0/matugen-4.2.0-x86_64.tar.gz", "a2e3b50e49ed6439999ba3c252ed04fabd98ee4e9d12e5e5dff2e66370569751", "bin/matugen"),
+    "matugen-aarch64": ("4.2.0", "https://github.com/jccr/matugen/releases/download/v4.2.0/matugen-4.2.0-aarch64.tar.gz", "d3336b9aa3a39edcb3634902868bc6a926decc3f840acffa3566d7d1239d0628", "bin/matugen"),
     "bibata": ("2.0.7", "https://github.com/ful1e5/Bibata_Cursor/releases/download/v2.0.7/Bibata.tar.xz", "172e33c4ae415278384dcecc7d1a9b7a024266bc944bc751fd86532be1cc6251", "share/icons"),
     "space-grotesk": ("2.0.0", "https://github.com/floriankarsten/space-grotesk/releases/download/2.0.0/SpaceGrotesk-2.0.0.zip", "53b415577d4139248555300710bea0d268c7a5be67b93de53b716a9736cabffd", "share/fonts/SpaceGrotesk"),
     "material-symbols": ("27e9ef1d", "https://raw.githubusercontent.com/google/material-design-icons/27e9ef1dbeedc13d682fece4a58e1eda4cb0961a/variablefont/MaterialSymbolsRounded%5BFILL%2CGRAD%2Copsz%2Cwght%5D.ttf", "7f3a16d9aa1b6f367eadc1614ad27308ae2c0e91e617e2069f122afd9f0c3c58", "share/fonts/MaterialSymbolsRounded.ttf"),
     "jetbrains-mono-nerd-fonts": ("3.3.0", "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/JetBrainsMono.tar.xz", "7d171ea3884be22fc08bf1a1aee640a3dc93f031989c27f6f9ceb30a6a668de1", "share/fonts/JetBrainsMonoNerdFont"),
     "space-mono-nerd-fonts": ("3.3.0", "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/SpaceMono.tar.xz", "a2058cfc43eee5a170208c6e90fa77d8f0aa755e0d213e795f70781f7d807942", "share/fonts/SpaceMonoNerdFont"),
 }
+# Upstream publishes these for x86_64 only; aarch64 installs the fork builds
+# of the same upstream tag instead.
+AARCH64 = {"qmk-hid": "qmk-hid-aarch64", "matugen": "matugen-aarch64"}
+EXTRAS = tuple(name for name in RELEASES if name not in AARCH64.values())
 FONTS = ("space-grotesk", "material-symbols", "jetbrains-mono-nerd-fonts", "space-mono-nerd-fonts")
 
 
@@ -54,7 +61,7 @@ def atomic_write(path, data, mode=0o644):
 
 
 def install(name, root=None):
-    version, url, digest, relative = RELEASES[name]
+    version, url, digest, relative = RELEASES[AARCH64.get(name, name) if platform.machine() == "aarch64" else name]
     root = root or Path.home() / ".local"
     receipt = root / "state/ryoku/extras" / (name + ".json")
     if receipt.exists():
@@ -148,12 +155,12 @@ def install(name, root=None):
 if __name__ == "__main__":
     try:
         if len(sys.argv) != 2:
-            raise ValueError("usage: ryoku-install-extra " + "|".join(RELEASES))
+            raise ValueError("usage: ryoku-install-extra " + "|".join(EXTRAS))
         target = sys.argv[1]
         if target == "jetbrains-mono-nerd":
             target = "jetbrains-mono-nerd-fonts"
-        if target not in RELEASES:
-            raise ValueError("usage: ryoku-install-extra " + "|".join(RELEASES))
+        if target not in EXTRAS:
+            raise ValueError("usage: ryoku-install-extra " + "|".join(EXTRAS))
         install(target)
     except Exception as error:
         sys.exit("ryoku-install-extra: " + str(error))
