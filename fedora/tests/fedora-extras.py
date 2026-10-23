@@ -93,6 +93,24 @@ class Extras(unittest.TestCase):
             target = root / 'share/fonts/SpaceMonoNerdFont/SpaceMonoNerdFont-Regular.ttf'
             self.assertEqual(target.read_bytes(), font_data)
 
+    def test_aarch64_installs_its_own_build(self):
+        import io
+        import tarfile
+        binary = b'\x7fELF aarch64 matugen'
+        blob = io.BytesIO()
+        with tarfile.open(fileobj=blob, mode='w:gz') as archive:
+            info = tarfile.TarInfo('matugen')
+            info.size = len(binary)
+            archive.addfile(info, io.BytesIO(binary))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with patch.object(extra.platform, 'machine', return_value='aarch64'), \
+                    patch.object(extra, 'download', return_value=blob.getvalue()) as download:
+                extra.install('matugen', root)
+            self.assertEqual(download.call_args.args, extra.RELEASES['matugen-aarch64'][1:3])
+            self.assertEqual((root / 'bin/matugen').read_bytes(), binary)
+        self.assertNotIn('matugen-aarch64', extra.EXTRAS)
+
     def test_truncated_download_fails_checksum(self):
         import io
         with patch.object(extra.urllib.request, 'urlopen', return_value=io.BytesIO(b'partial')):
