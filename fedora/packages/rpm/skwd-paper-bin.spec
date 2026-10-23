@@ -1,14 +1,14 @@
 %global ryoku_vendor cargo
-%global skwd_commit 68916db2c49e098fb3b8fa1c77b7eeeee07ba627
+%global skwd_commit 7f9c17277a589cdd11113771b0bde0a6bb2b7d38
 %global ffmpeg_version 9.0.1
 
 Name:           skwd-paper-bin
 Version:        1.0.0_beta.23
-Release:        4%{?dist}
+Release:        5%{?dist}
 Summary:        Wallpaper Engine renderer backend for Ryogami
 License:        GPL-3.0-or-later
 URL:            https://github.com/liixini/skwd-paper
-Source0:        %{url}/archive/%{skwd_commit}.tar.gz#/skwd-paper-%{version}.tar.gz
+Source0:        https://github.com/jccr/skwd-paper/archive/%{skwd_commit}.tar.gz#/skwd-paper-%{version}.tar.gz
 Source1:        https://ffmpeg.org/releases/ffmpeg-%{ffmpeg_version}.tar.xz
 Source100:      %{name}-%{version}-vendor.tar.gz
 
