@@ -107,6 +107,9 @@ func TestFedoraReleaseStatus(t *testing.T) {
 			}
 			t.Setenv("RYOKU_HOST_PKGMGR", "dnf")
 			t.Setenv("RYOKU_OS_RELEASE", osRelease)
+			old := MachineArch
+			MachineArch = func() string { return "x86_64" }
+			t.Cleanup(func() { MachineArch = old })
 			t.Setenv("RYOKU_DNF_REPO_CONFIG", repoConfig)
 			t.Setenv("RYOKU_RELEASE_BASE", server.URL+"/fedora/$releasever")
 			app := New(Config{
@@ -234,6 +237,9 @@ func TestFedoraReleaseStatusKnowsWhetherStableHasShipped(t *testing.T) {
 			}
 			t.Setenv("RYOKU_HOST_PKGMGR", "dnf")
 			t.Setenv("RYOKU_OS_RELEASE", osRelease)
+			old := MachineArch
+			MachineArch = func() string { return "x86_64" }
+			t.Cleanup(func() { MachineArch = old })
 			t.Setenv("RYOKU_DNF_REPO_CONFIG", repoConfig)
 			t.Setenv("RYOKU_RELEASE_BASE", server.URL+"/fedora/$releasever")
 

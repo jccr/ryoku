@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -84,8 +85,11 @@ type RepoPackage struct {
 
 func RepoURLFor(manager PackageManager, channel string) string {
 	base, arch := repoBaseFor(manager), "$arch"
-	if manager == XBPS || manager == DNF {
+	switch manager {
+	case XBPS:
 		arch = "x86_64"
+	case DNF:
+		arch = "$basearch"
 	}
 	switch {
 	case channel == sys.ChannelStable:
@@ -151,7 +155,7 @@ func RepoChannelOf(manager PackageManager, raw string) string {
 	base := repoBaseFor(manager)
 	value := strings.TrimSuffix(strings.TrimSpace(raw), "/")
 	hasArch := false
-	for _, arch := range []string{"x86_64", "$basearch", "$arch"} {
+	for _, arch := range []string{"x86_64", "aarch64", "$basearch", "$arch"} {
 		if strings.HasSuffix(value, "/"+arch) {
 			value = strings.TrimSuffix(value, "/"+arch)
 			hasArch = true
@@ -235,8 +239,18 @@ func ExpandRepoURL(raw string) string {
 	if release != "" {
 		raw = strings.ReplaceAll(raw, "$releasever", release)
 	}
-	raw = strings.ReplaceAll(raw, "$basearch", "x86_64")
-	return strings.ReplaceAll(raw, "$arch", "x86_64")
+	raw = strings.ReplaceAll(raw, "$basearch", MachineArch())
+	return strings.ReplaceAll(raw, "$arch", MachineArch())
+}
+
+// MachineArch is this machine's package architecture, the value dnf's
+// $basearch and pacman's $arch take on the x86_64 and aarch64 hosts Ryoku
+// publishes for. Tests replace it to pin one.
+var MachineArch = func() string {
+	if runtime.GOARCH == "arm64" {
+		return "aarch64"
+	}
+	return "x86_64"
 }
 
 func osReleaseVersion(path string) string {
