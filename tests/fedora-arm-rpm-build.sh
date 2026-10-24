@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Builds Ryoku's Fedora RPMs on aarch64 the way the publish workflow's build
-# job does on x86_64, unsigned (RYOKU_RPM_LOCAL=1), in an arm64 fedora
-# container. Specs whose ExclusiveArch leaves out aarch64 are reported and
-# skipped; every other spec builds on its own, so one failure does not hide the
-# next. results.tsv lists each spec's outcome and logs/ holds each build log.
-# When every kept spec builds, build-rpm-repo.sh assembles a local repository
-# in <out>/repo for `dnf --repofrompath`.
+# job does, unsigned (RYOKU_RPM_LOCAL=1), in an arm64 fedora container. Every
+# spec builds on its own, so one failure does not hide the next; one that
+# rpmbuild refuses for this architecture is reported as x86-only. results.tsv
+# lists each spec's outcome and logs/ holds each build log. When nothing failed,
+# build-rpm-repo.sh, which skips the x86-only specs itself, assembles a local
+# repository in <out>/repo for `dnf --repofrompath`.
 #
 #   tests/fedora-arm-rpm-build.sh <out-dir>
 set -euo pipefail
@@ -62,33 +62,14 @@ skip_if_unavailable=1
 EOF
 done < /repo/fedora/packages/build-coprs.tsv
 
-# ExclusiveArch, or ExcludeArch, leaves this machine out
-excluded() {
-  local allowed denied
-  read -r -a allowed <<< "$1"
-  read -r -a denied <<< "$2"
-  if ((${#allowed[@]})) && [[ " ${allowed[*]} " != *" $arch "* ]]; then
-    return 0
-  fi
-  [[ " ${denied[*]} " == *" $arch "* ]]
-}
-
 results=/out/results.tsv
 printf 'spec\tresult\tdetail\n' > "$results"
 declare -A outcome=()
+# every spec, x86-only ones too: prepare-srpms.sh fetches all their sources,
+# and fetch hooks need their spec's build tools (npm, pnpm)
 for spec in /repo/fedora/packages/rpm/*.spec; do
   name=$(basename "$spec" .spec)
-  only=$(rpmspec -q --srpm --qf '[%{EXCLUSIVEARCH} ]' "$spec" 2>/dev/null)
-  skip=$(rpmspec -q --srpm --qf '[%{EXCLUDEARCH} ]' "$spec" 2>/dev/null)
-  if excluded "$only" "$skip"; then
-    outcome[$name]=x86-only
-    # prepare-srpms.sh fetches every spec's sources, and fetch hooks need
-    # their spec's build tools (npm, pnpm), as the build job's builddep does
-    detail="ExclusiveArch: ${only% }"
-    dnf builddep -y "$spec" > "/out/logs/$name.builddep.log" 2>&1 ||
-      detail="$detail; builddep failed, logs/$name.builddep.log"
-    printf '%s\tx86-only\t%s\n' "$name" "$detail" >> "$results"
-  elif ! dnf builddep -y "$spec" > "/out/logs/$name.builddep.log" 2>&1; then
+  if ! dnf builddep -y "$spec" > "/out/logs/$name.builddep.log" 2>&1; then
     outcome[$name]=builddep-failed
     printf '%s\tbuilddep-failed\tlogs/%s.builddep.log\n' "$name" "$name" >> "$results"
   fi
@@ -98,20 +79,16 @@ RYOKU_RPM_LOCAL=1 RYOKU_SRPM_OUT=/out/srpms-all \
   /repo/fedora/packages/rpm/prepare-srpms.sh > /out/logs/prepare-srpms.log 2>&1 ||
   fail "prepare-srpms.sh failed (see logs/prepare-srpms.log)"
 
-# the input build-rpm-repo.sh gets: every SRPM this machine can build
-mkdir -p /out/srpms
-cp /out/srpms-all/release.json /out/srpms-all/upstream-rpms.tsv /out/srpms/
 export CCACHE_DIR=/cache/ccache CCACHE_MAXSIZE=2G GOCACHE=/cache/go GOMODCACHE=/cache/gomod
 export PATH=/usr/lib64/ccache:$PATH
 mkdir -p /out/rpms "$CCACHE_DIR" "$GOCACHE" "$GOMODCACHE"
 failed=0
 for srpm in /out/srpms-all/*.src.rpm; do
   name=$(rpm -qp --qf '%{NAME}' "$srpm")
-  case ${outcome[$name]:-} in
-    x86-only) continue ;;
-    builddep-failed) failed=1; continue ;;
-  esac
-  cp "$srpm" /out/srpms/
+  if [[ ${outcome[$name]:-} == builddep-failed ]]; then
+    failed=1
+    continue
+  fi
   started=$SECONDS
   if rpmbuild --define "_buildhost ryoku-builder" \
     --define "use_source_date_epoch_as_buildtime 1" \
@@ -119,6 +96,8 @@ for srpm in /out/srpms-all/*.src.rpm; do
     --define "_topdir /root/rpmbuild" --define "_rpmdir /out/rpms" \
     --rebuild "$srpm" > "/out/logs/$name.build.log" 2>&1; then
     printf '%s\tbuilt\t%ss\n' "$name" "$((SECONDS - started))" >> "$results"
+  elif grep -q '^error: Architecture is not included' "/out/logs/$name.build.log"; then
+    printf '%s\tx86-only\tnot built for %s\n' "$name" "$arch" >> "$results"
   else
     failed=1
     printf '%s\tbuild-failed\tlogs/%s.build.log\n' "$name" "$name" >> "$results"
@@ -128,7 +107,7 @@ done
 
 cat "$results"
 ((failed == 0)) || fail "some specs did not build on $arch; see results.tsv"
-RYOKU_RPM_LOCAL=1 RYOKU_SRPM_IN=/out/srpms RYOKU_RPM_OUT=/out/repo \
+RYOKU_RPM_LOCAL=1 RYOKU_SRPM_IN=/out/srpms-all RYOKU_RPM_OUT=/out/repo \
   /repo/fedora/packages/rpm/build-rpm-repo.sh > /out/logs/build-rpm-repo.log 2>&1 ||
   fail "build-rpm-repo.sh failed (see logs/build-rpm-repo.log)"
 printf '%s\n' 'fedora-arm-rpm-build: OK, local repository in repo/'
