@@ -10,7 +10,7 @@ pkgname=ryoku-shell
 pkgver=${RYOKU_PKGVER:-0.1.0}
 pkgrel=1
 pkgdesc="Ryoku shell IPC daemon: supervises the Quickshell desktop"
-arch=('x86_64')
+arch=('x86_64' 'aarch64')
 url="https://ryoku.dev"
 license=('GPL-3.0-or-later')
 # uv provisions the ryostage engine's Python 3.13 venv (ryostage install); the

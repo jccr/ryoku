@@ -15,7 +15,7 @@ pkgname=ryoku-keysounds-niri
 pkgver=${RYOKU_PKGVER:-0.1.0}
 pkgrel=1
 pkgdesc="niri key-press sounds: a small evdev+libcanberra engine, niri's plugin substitute"
-arch=('x86_64')
+arch=('x86_64' 'aarch64')
 url="https://ryoku.dev"
 license=('GPL-3.0-or-later')
 # rust builds the daemon; the samples and the importer come from the shared

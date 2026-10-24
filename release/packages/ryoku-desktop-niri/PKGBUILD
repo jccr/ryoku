@@ -16,7 +16,7 @@ pkgver=${RYOKU_PKGVER:-0.1.0}
 pkgrel=1
 pkgdesc="Ryoku desktop: the niri compositor, its portal and X11 satellite, and the ryoku-wm-niri provider"
 # package() builds the Go provider, so the payload is arch-specific.
-arch=('x86_64')
+arch=('x86_64' 'aarch64')
 url="https://ryoku.dev"
 license=('GPL-3.0-or-later')
 makedepends=('go')

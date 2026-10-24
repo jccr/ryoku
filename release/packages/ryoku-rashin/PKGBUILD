@@ -14,7 +14,7 @@ install=ryoku-rashin.install
 pkgver=${RYOKU_PKGVER:-0.1.0}
 pkgrel=1
 pkgdesc="Ryoku Rashin: local agent OS daemon and dashboard"
-arch=('x86_64')
+arch=('x86_64' 'aarch64')
 url="https://ryoku.dev"
 license=('GPL-3.0-or-later')
 # Hermes itself is per-user opt-in (installed by the one-click setup, never
