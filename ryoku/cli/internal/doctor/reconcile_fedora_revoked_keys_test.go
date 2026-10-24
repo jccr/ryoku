@@ -55,7 +55,7 @@ func TestReconcileFedoraRevokedKeys(t *testing.T) {
 }
 
 func TestNormalizedFingerprintsSkipsCommentsAndCase(t *testing.T) {
-	got := normalizedFingerprints("# retired 2027\n  EB6D3C0F55A7B3CABA6B2838847B274F025DD6E3 \n\n")
+	got := normalizedFingerprints("# retired 2027\n  F0F1A464B1D4CAB4BEC1BDEE681F18C0880B2188 \n\n")
 	if !slices.Equal(got, []string{currentTestKey}) {
 		t.Fatalf("fingerprints = %q", got)
 	}
