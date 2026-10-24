@@ -43,6 +43,9 @@ no_check_bucket = true
 # Cloudflare refuses request bodies over 100 MB; 50M parts stay under it.
 upload_cutoff = 50M
 chunk_size = 50M
+# Cloudflare rewrites Accept-Encoding on the way to the origin, so a signature
+# covering it no longer matches what Garage receives.
+sign_accept_encoding = false
 EOF
 chmod 600 ~/.config/rclone/rclone.conf
 
