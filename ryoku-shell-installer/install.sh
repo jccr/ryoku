@@ -51,7 +51,7 @@ main() {
   case "$(uname -m)" in
     x86_64) bin=ryoku-shell-install ;;
     aarch64)
-      [[ $ryoku_family == arch ]] || die "off x86_64, Ryoku installs on Arch-based systems only for now"
+      [[ $ryoku_family == arch || $ryoku_family == fedora ]] || die "off x86_64, Ryoku installs on Arch-based and Fedora systems only for now"
       bin=ryoku-shell-install-aarch64
       ;;
     *) die "Ryoku ships x86_64 and aarch64 builds only" ;;

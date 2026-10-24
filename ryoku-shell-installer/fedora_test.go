@@ -19,7 +19,7 @@ func TestFedoraRepositoryChannelsAndOverride(t *testing.T) {
 	}{
 		{"main", "stable", fedoraStableRepo},
 		{"unstable-dev", "testing", fedoraTestingRepo},
-		{"v1.2.3", "v1.2.3", "https://repo.ryoku.dev/stable/fedora/$releasever/releases/v1.2.3/x86_64"},
+		{"v1.2.3", "v1.2.3", "https://repo.ryoku.dev/stable/fedora/$releasever/releases/v1.2.3/$basearch"},
 	} {
 		channel, repository := fedoraRepository(test.ref)
 		if channel != test.channel || repository != test.repository {
@@ -37,6 +37,19 @@ func TestFedoraRepositoryChannelsAndOverride(t *testing.T) {
 	}
 	if !strings.Contains(fedoraRepoContent(repository), "baseurl=/srv/ryoku-rpms\n") {
 		t.Fatal("override was not written into repo content")
+	}
+}
+
+func TestFedoraReleaseRepoURLFollowsTheMachine(t *testing.T) {
+	t.Setenv("RYOKU_RPM_REPO", "")
+	old := hostBasearch
+	t.Cleanup(func() { hostBasearch = old })
+	for _, arch := range []string{"x86_64", "aarch64"} {
+		hostBasearch = func() string { return arch }
+		want := "https://repo.ryoku.dev/stable/fedora/44/channels/testing/" + arch + "/repodata/repomd.xml"
+		if got := fedoraReleaseRepoURL("unstable-dev", "44"); got != want {
+			t.Errorf("on %s: fedoraReleaseRepoURL = %q, want %q", arch, got, want)
+		}
 	}
 }
 
