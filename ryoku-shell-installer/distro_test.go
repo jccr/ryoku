@@ -146,20 +146,25 @@ func TestStepsPerDistro(t *testing.T) {
 }
 
 func TestLaneFor(t *testing.T) {
+	old := archRepoServes
+	t.Cleanup(func() { archRepoServes = old })
 	cases := []struct {
 		d       *distro
 		machine string
+		served  bool
 		want    *distro
 	}{
-		{archLinux, "x86_64", archLinux},
-		{archLinux, "aarch64", archSource},
-		{debianLinux, "aarch64", debianLinux},
-		{fedoraLinux, "aarch64", fedoraLinux},
-		{nil, "aarch64", nil},
+		{archLinux, "x86_64", false, archLinux},
+		{archLinux, "aarch64", false, archSource},
+		{archLinux, "aarch64", true, archLinux},
+		{debianLinux, "aarch64", false, debianLinux},
+		{fedoraLinux, "aarch64", false, fedoraLinux},
+		{nil, "aarch64", false, nil},
 	}
 	for _, c := range cases {
+		archRepoServes = func(string, string) bool { return c.served }
 		if got := laneFor(c.d, c.machine); got != c.want {
-			t.Errorf("laneFor(%v, %q) = %v, want %v", c.d, c.machine, got, c.want)
+			t.Errorf("laneFor(%v, %q) with served=%v = %v, want %v", c.d, c.machine, c.served, got, c.want)
 		}
 	}
 }

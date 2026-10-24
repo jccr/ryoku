@@ -1257,11 +1257,12 @@ func main() {
 	if os.Geteuid() == 0 {
 		die(i18n.T("run as your normal user, not root; sudo is used where needed"))
 	}
+	installRef = *ref
 	d := detectHostDistro()
 	if d == nil {
 		die(i18n.T("unsupported distribution: Ryoku installs on Arch-based, Debian-based, Void and Fedora systems"))
 	}
-	if out("uname", "-m") != "x86_64" && d != archSource && d.id != "fedora" {
+	if out("uname", "-m") != "x86_64" && d.id != "arch" && d.id != "fedora" {
 		die(i18n.T("off x86_64, Ryoku installs on Arch-based and Fedora systems only for now"))
 	}
 	if d.id == "fedora" {

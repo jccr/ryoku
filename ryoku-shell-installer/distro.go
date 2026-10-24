@@ -1,10 +1,12 @@
 package main
 
 import (
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // distro is the only place the installer knows a package manager. Every step
@@ -92,10 +94,26 @@ var archSource = &distro{
 	},
 }
 
+// installRef is the --ref this run installs; the Arch lane asks its channel.
+var installRef = "main"
+
+// archRepoServes reports whether the [ryoku] channel for ref publishes a
+// database for machine.
+var archRepoServes = func(ref, machine string) bool {
+	_, server := channelForRef(ref)
+	client := &http.Client{Timeout: 6 * time.Second}
+	resp, err := client.Head(strings.Replace(server, "$arch", machine, 1) + "/ryoku.db")
+	if err != nil {
+		return false
+	}
+	resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
+}
+
 // laneFor picks how a detected distro installs on this machine: Arch off
-// x86_64 builds from source because no [ryoku] database exists for it.
+// x86_64 builds from source until its [ryoku] channel serves that machine.
 func laneFor(d *distro, machine string) *distro {
-	if d == archLinux && machine != "x86_64" {
+	if d == archLinux && machine != "x86_64" && !archRepoServes(installRef, machine) {
 		return archSource
 	}
 	return d

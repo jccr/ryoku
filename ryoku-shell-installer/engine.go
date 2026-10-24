@@ -2069,7 +2069,9 @@ func stepPackages(e *engine) error {
 	pkgs = filterChoicePackages(pkgs, e.p)
 	pkgs = uniquePackages(pkgs)
 	pkgs = e.dropSatisfied(pkgs)
-	if d == archSource {
+	// off x86_64 the sync databases lack some names (x86-only firmware, the
+	// limine tools), whether the desktop builds from source or not
+	if d == archSource || (d.id == "arch" && e.f.machine != "x86_64") {
 		pkgs = e.dropUnresolvable(pkgs)
 	}
 	if d.id == "arch" {
