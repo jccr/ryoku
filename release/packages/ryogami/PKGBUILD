@@ -17,7 +17,7 @@ pkgname=ryogami
 pkgver=${RYOKU_PKGVER:-0.2.0}
 pkgrel=1
 pkgdesc="Ryogami: the Ryoku wallpaper daemon and Qt Quick picker (catalog, thumbnails, applies, depth)"
-arch=('x86_64')
+arch=('x86_64' 'aarch64')
 url="https://ryoku.dev"
 # GPL-3.0-or-later: the picker ports skwd-wall v2; its LICENSE and NOTICE ship below.
 license=('GPL-3.0-or-later')
