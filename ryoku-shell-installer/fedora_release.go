@@ -15,7 +15,7 @@ import (
 	"ryoku-i18n"
 )
 
-const fedoraReleasesURL = "https://repo.ryoku.dev/stable/fedora/releases"
+const fedoraReleasesURL = "https://ryoku-repo.jccr.dev/stable/fedora/releases"
 
 type httpDoer interface {
 	Do(*http.Request) (*http.Response, error)

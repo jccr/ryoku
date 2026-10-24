@@ -26,7 +26,7 @@ import (
 // channel a box is on is nothing but the Server line of its [ryoku] stanza,
 // so there is no second state to drift from it.
 const (
-	RepoBase     = "https://repo.ryoku.dev/stable"
+	RepoBase     = "https://ryoku-repo.jccr.dev/stable"
 	VoidRepoBase = RepoBase + "/void"
 )
 

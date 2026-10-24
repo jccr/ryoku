@@ -10,7 +10,7 @@ import (
 // stanza the installer appends. everything else is a genuine conflict.
 func TestClassifyPacnew(t *testing.T) {
 	const stockPacman = "[options]\nHoldPkg = pacman glibc\n\n[core]\nInclude = /etc/pacman.d/mirrorlist\n"
-	liveWithRyoku := stockPacman + "\n[ryoku]\nSigLevel = Required\nServer = https://repo.ryoku.dev/stable/$arch\n"
+	liveWithRyoku := stockPacman + "\n[ryoku]\nSigLevel = Required\nServer = https://ryoku-repo.jccr.dev/stable/$arch\n"
 
 	cases := []struct {
 		name   string
@@ -41,7 +41,7 @@ func TestStripRyokuRepoStanza(t *testing.T) {
 	const base = "[options]\nHoldPkg = pacman\n\n[core]\nInclude = /etc/pacman.d/mirrorlist\n"
 	// appended at EOF (the installer's shape): the whole stanza plus its blank
 	// separator must go, leaving the base untouched.
-	appended := base + "\n[ryoku]\nSigLevel = Required\nServer = https://repo.ryoku.dev/stable/$arch\n"
+	appended := base + "\n[ryoku]\nSigLevel = Required\nServer = https://ryoku-repo.jccr.dev/stable/$arch\n"
 	if got := string(trimTrailing(stripRyokuRepoStanza([]byte(appended)))); got != string(trimTrailing([]byte(base))) {
 		t.Errorf("appended stanza not stripped cleanly:\n%q", got)
 	}

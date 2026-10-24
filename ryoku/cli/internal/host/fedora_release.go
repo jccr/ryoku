@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	FedoraReleasesURL    = "https://repo.ryoku.dev/stable/fedora/releases"
+	FedoraReleasesURL    = "https://ryoku-repo.jccr.dev/stable/fedora/releases"
 	fedoraReleaseTimeout = 3 * time.Second
 	maxFedoraReleaseList = 64 << 10
 )

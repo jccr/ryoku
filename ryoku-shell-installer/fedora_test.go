@@ -19,7 +19,7 @@ func TestFedoraRepositoryChannelsAndOverride(t *testing.T) {
 	}{
 		{"main", "stable", fedoraStableRepo},
 		{"unstable-dev", "testing", fedoraTestingRepo},
-		{"v1.2.3", "v1.2.3", "https://repo.ryoku.dev/stable/fedora/$releasever/releases/v1.2.3/$basearch"},
+		{"v1.2.3", "v1.2.3", "https://ryoku-repo.jccr.dev/stable/fedora/$releasever/releases/v1.2.3/$basearch"},
 	} {
 		channel, repository := fedoraRepository(test.ref)
 		if channel != test.channel || repository != test.repository {
@@ -46,7 +46,7 @@ func TestFedoraReleaseRepoURLFollowsTheMachine(t *testing.T) {
 	t.Cleanup(func() { hostBasearch = old })
 	for _, arch := range []string{"x86_64", "aarch64"} {
 		hostBasearch = func() string { return arch }
-		want := "https://repo.ryoku.dev/stable/fedora/44/channels/testing/" + arch + "/repodata/repomd.xml"
+		want := "https://ryoku-repo.jccr.dev/stable/fedora/44/channels/testing/" + arch + "/repodata/repomd.xml"
 		if got := fedoraReleaseRepoURL("unstable-dev", "44"); got != want {
 			t.Errorf("on %s: fedoraReleaseRepoURL = %q, want %q", arch, got, want)
 		}
@@ -268,7 +268,7 @@ func TestFedoraReleaseGateChecksChannelBeforeChanges(t *testing.T) {
 	if err := fedoraReleaseGate(client, "unstable-dev", osRelease); err != nil {
 		t.Fatal(err)
 	}
-	want := "HEAD https://repo.ryoku.dev/stable/fedora/44/channels/testing/x86_64/repodata/repomd.xml"
+	want := "HEAD https://ryoku-repo.jccr.dev/stable/fedora/44/channels/testing/x86_64/repodata/repomd.xml"
 	if len(requests) != 1 || requests[0] != want {
 		t.Fatalf("release requests = %v, want [%s]", requests, want)
 	}

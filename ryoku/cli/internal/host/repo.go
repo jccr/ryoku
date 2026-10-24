@@ -19,9 +19,9 @@ import (
 )
 
 const (
-	PacmanRepoBase = "https://repo.ryoku.dev/stable"
-	XBPSRepoBase   = "https://repo.ryoku.dev/stable/void"
-	DNFRepoBase    = "https://repo.ryoku.dev/stable/fedora/$releasever"
+	PacmanRepoBase = "https://ryoku-repo.jccr.dev/stable"
+	XBPSRepoBase   = "https://ryoku-repo.jccr.dev/stable/void"
+	DNFRepoBase    = "https://ryoku-repo.jccr.dev/stable/fedora/$releasever"
 	ryokuRepoName  = "ryoku"
 	xbpsRepoConfig = "20-ryoku.conf"
 	dnfRepoConfig  = "/etc/yum.repos.d/ryoku.repo"

@@ -29,25 +29,25 @@ import (
 // line-anchored so a commented-out "#[ryoku]" stanza does not count.
 var ryokuStanzaRe = regexp.MustCompile(`(?m)^\[ryoku\]`)
 
-const repoURL = "https://github.com/ryoku-dev/ryoku.git"
+const repoURL = "https://github.com/jccr/ryoku.git"
 
 // The Ryoku channels an installer payload ref belongs to. unstable-dev is what
 // each testing repository rebuilds on every push; everything else matches the
 // stable repository.
 const (
-	stableServer         = "https://repo.ryoku.dev/stable/$arch"
-	testingServer        = "https://repo.ryoku.dev/stable/channels/testing/$arch"
-	voidStableRepo       = "https://repo.ryoku.dev/stable/void/x86_64"
-	voidTestingRepo      = "https://repo.ryoku.dev/stable/void/channels/testing/x86_64"
+	stableServer         = "https://ryoku-repo.jccr.dev/stable/$arch"
+	testingServer        = "https://ryoku-repo.jccr.dev/stable/channels/testing/$arch"
+	voidStableRepo       = "https://ryoku-repo.jccr.dev/stable/void/x86_64"
+	voidTestingRepo      = "https://ryoku-repo.jccr.dev/stable/void/channels/testing/x86_64"
 	voidRepoConfig       = "/etc/xbps.d/20-ryoku.conf"
 	voidSystemRepo       = "/usr/share/xbps.d/20-ryoku.conf"
 	voidTrustedKeyDir    = "/var/db/xbps/keys"
-	fedoraStableRepo     = "https://repo.ryoku.dev/stable/fedora/$releasever/$basearch"
-	fedoraTestingRepo    = "https://repo.ryoku.dev/stable/fedora/$releasever/channels/testing/$basearch"
+	fedoraStableRepo     = "https://ryoku-repo.jccr.dev/stable/fedora/$releasever/$basearch"
+	fedoraTestingRepo    = "https://ryoku-repo.jccr.dev/stable/fedora/$releasever/channels/testing/$basearch"
 	fedoraRepoConfig     = "/etc/yum.repos.d/ryoku.repo"
 	fedoraRepoDir        = "/etc/yum.repos.d"
 	fedoraKeyPath        = "/etc/pki/rpm-gpg/RPM-GPG-KEY-ryoku"
-	fedoraKeyURL         = "https://repo.ryoku.dev/stable/ryoku-release-key.pub.asc"
+	fedoraKeyURL         = "https://ryoku-repo.jccr.dev/stable/ryoku-release-key.pub.asc"
 	fedoraKeyFingerprint = "F0F1A464B1D4CAB4BEC1BDEE681F18C0880B2188"
 	cachyosMirrorDB      = "https://mirror.cachyos.org/repo/x86_64_v3/cachyos-v3/cachyos-v3.db"
 )
@@ -55,7 +55,7 @@ const (
 // channelForRef names the [ryoku] channel a payload ref belongs to (the value
 // `ryoku track` records as the channel intent) and its pacman Server.
 func channelForRef(ref string) (channel, server string) {
-	if ref == "unstable-dev" {
+	if testingRef(ref) {
 		return "testing", testingServer
 	}
 	return "stable", stableServer
@@ -78,13 +78,19 @@ func voidRepository(ref string) (channel, repository string, writeOverride bool)
 
 var fedoraReleaseTagRe = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$`)
 
+// testingRef is a payload ref the testing channel serves: unstable-dev, and on
+// the fork the aarch64-phase branches its CI publishes to testing.
+func testingRef(ref string) bool {
+	return ref == "unstable-dev" || strings.HasPrefix(ref, "aarch64-phase")
+}
+
 func fedoraRepository(ref string) (channel, repository string) {
 	switch {
-	case ref == "unstable-dev":
+	case testingRef(ref):
 		channel, repository = "testing", fedoraTestingRepo
 	case fedoraReleaseTagRe.MatchString(ref):
 		channel = ref
-		repository = "https://repo.ryoku.dev/stable/fedora/$releasever/releases/" + ref + "/$basearch"
+		repository = "https://ryoku-repo.jccr.dev/stable/fedora/$releasever/releases/" + ref + "/$basearch"
 	default:
 		channel, repository = "stable", fedoraStableRepo
 	}

@@ -326,7 +326,7 @@ func TestFedoraPackageDatabaseReportsFilteredDNS(t *testing.T) {
 		return "repository metadata is unavailable", errors.New("TLS connection failed")
 	}
 	doctorFilteredRyokuDNS = func(repository string) bool {
-		return strings.Contains(repository, "repo.ryoku.dev")
+		return strings.Contains(repository, "ryoku-repo.jccr.dev")
 	}
 	t.Cleanup(func() {
 		doctorPackageInstalled = oldInstalled

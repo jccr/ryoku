@@ -376,7 +376,7 @@ func TestFedoraReleaseURLsExpandDNFVariables(t *testing.T) {
 	host.MachineArch = func() string { return "x86_64" }
 	t.Cleanup(func() { host.MachineArch = old })
 
-	base := "https://repo.ryoku.dev/stable/fedora/44"
+	base := "https://ryoku-repo.jccr.dev/stable/fedora/44"
 	if got := repoBase(); got != base {
 		t.Fatalf("repoBase = %q, want %q", got, base)
 	}

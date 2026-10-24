@@ -226,9 +226,9 @@ func TestFilteredDNSUpdateError(t *testing.T) {
 	t.Cleanup(func() { updaterFilteredRyokuDNS = oldCheck })
 
 	updaterFilteredRyokuDNS = func(repository string) bool {
-		return repository == "https://repo.ryoku.dev/stable/$arch"
+		return repository == "https://ryoku-repo.jccr.dev/stable/$arch"
 	}
-	err := filteredDNSUpdateError("https://repo.ryoku.dev/stable/$arch")
+	err := filteredDNSUpdateError("https://ryoku-repo.jccr.dev/stable/$arch")
 	if err == nil || !strings.Contains(err.Error(), "DNS for ryoku.dev is being filtered") ||
 		!strings.Contains(err.Error(), "docs/updates.md#filtered-dns") {
 		t.Fatalf("filtered DNS error = %v", err)

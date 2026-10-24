@@ -75,19 +75,19 @@ func TestChannelOfServerAcceptsWhatBoxesCarry(t *testing.T) {
 	build := "v0.94.1-beta.20.dev.12+g1234567"
 	dir := "v0.94.1-beta.20.dev.12_g1234567"
 	cases := map[string]string{
-		"https://repo.ryoku.dev/stable/$arch":                                        "stable",
-		"https://repo.ryoku.dev/stable/x86_64":                                       "stable",
-		"https://repo.ryoku.dev/stable/x86_64/":                                      "stable",
-		"https://repo.ryoku.dev/stable/channels/testing/$arch":                       "testing",
-		"https://repo.ryoku.dev/stable/releases/v0.55.7-beta.19/$arch":               "v0.55.7-beta.19",
-		"https://repo.ryoku.dev/stable/releases/v0.55.7-beta.19/x86_64/":             "v0.55.7-beta.19",
-		"https://repo.ryoku.dev/stable/channels/testing/builds/" + dir + "/$arch":    build,
-		"https://repo.ryoku.dev/stable/channels/testing/builds/" + dir + "/x86_64/":  build,
+		"https://ryoku-repo.jccr.dev/stable/$arch":                                        "stable",
+		"https://ryoku-repo.jccr.dev/stable/x86_64":                                       "stable",
+		"https://ryoku-repo.jccr.dev/stable/x86_64/":                                      "stable",
+		"https://ryoku-repo.jccr.dev/stable/channels/testing/$arch":                       "testing",
+		"https://ryoku-repo.jccr.dev/stable/releases/v0.55.7-beta.19/$arch":               "v0.55.7-beta.19",
+		"https://ryoku-repo.jccr.dev/stable/releases/v0.55.7-beta.19/x86_64/":             "v0.55.7-beta.19",
+		"https://ryoku-repo.jccr.dev/stable/channels/testing/builds/" + dir + "/$arch":    build,
+		"https://ryoku-repo.jccr.dev/stable/channels/testing/builds/" + dir + "/x86_64/":  build,
 		"file:///home/x/ryoku-arch/release/repo/out/$arch":                           "",
 		"https://mirror.example.org/ryoku/$arch":                                     "",
-		"https://repo.ryoku.dev/stable/releases/not-a-tag/$arch":                     "",
-		"https://repo.ryoku.dev/stable/channels/testing/builds/not-a-build/x86_64":   "",
-		"https://repo.ryoku.dev/stable/channels/testing/builds/" + build + "/x86_64": "",
+		"https://ryoku-repo.jccr.dev/stable/releases/not-a-tag/$arch":                     "",
+		"https://ryoku-repo.jccr.dev/stable/channels/testing/builds/not-a-build/x86_64":   "",
+		"https://ryoku-repo.jccr.dev/stable/channels/testing/builds/" + build + "/x86_64": "",
 	}
 	for in, want := range cases {
 		if got := ChannelOfServer(in); got != want {
@@ -99,11 +99,11 @@ func TestChannelOfServerAcceptsWhatBoxesCarry(t *testing.T) {
 func TestRyokuServerReadsTheStanza(t *testing.T) {
 	dir := t.TempDir()
 	conf := filepath.Join(dir, "pacman.conf")
-	os.WriteFile(conf, []byte("[options]\nHoldPkg = pacman\n\n[core]\nInclude = /etc/pacman.d/mirrorlist\n\n[ryoku]\nSigLevel = Required\nServer = https://repo.ryoku.dev/stable/$arch\n\n[extra]\nServer = https://example/$arch\n"), 0o644)
+	os.WriteFile(conf, []byte("[options]\nHoldPkg = pacman\n\n[core]\nInclude = /etc/pacman.d/mirrorlist\n\n[ryoku]\nSigLevel = Required\nServer = https://ryoku-repo.jccr.dev/stable/$arch\n\n[extra]\nServer = https://example/$arch\n"), 0o644)
 	old := PacmanConf
 	PacmanConf = conf
 	defer func() { PacmanConf = old }()
-	if got := RyokuServer(); got != "https://repo.ryoku.dev/stable/$arch" {
+	if got := RyokuServer(); got != "https://ryoku-repo.jccr.dev/stable/$arch" {
 		t.Fatalf("server = %q", got)
 	}
 	if got := PackagedChannel(); got != "stable" {

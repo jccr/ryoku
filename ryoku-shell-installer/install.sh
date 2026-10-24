@@ -4,18 +4,18 @@
 # on an existing supported machine. Kept deliberately dumb: every real decision
 # lives in the ryoku-shell-install binary this script downloads.
 #
-#   curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku/main/ryoku-shell-installer/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/jccr/ryoku/main/ryoku-shell-installer/install.sh | bash
 #
 # args after `bash -s --` are forwarded to the installer (--yes, --dry-run).
 # RYOKU_SHELL_REF picks the git ref to fetch the installer and payload from.
 # unstable-dev also puts the box on the unstable (testing) package channel:
 #
-#   curl -fsSL https://raw.githubusercontent.com/ryoku-dev/ryoku/unstable-dev/ryoku-shell-installer/install.sh | RYOKU_SHELL_REF=unstable-dev bash
+#   curl -fsSL https://raw.githubusercontent.com/jccr/ryoku/unstable-dev/ryoku-shell-installer/install.sh | RYOKU_SHELL_REF=unstable-dev bash
 set -euo pipefail
 
 main() {
   local ref="${RYOKU_SHELL_REF:-main}"
-  local raw="https://raw.githubusercontent.com/ryoku-dev/ryoku/${ref}/ryoku-shell-installer"
+  local raw="https://raw.githubusercontent.com/jccr/ryoku/${ref}/ryoku-shell-installer"
 
   # English on purpose: this bootstrap runs before any Ryoku catalog exists on
   # the box to translate from; the ryoku-shell-install binary it fetches does that.

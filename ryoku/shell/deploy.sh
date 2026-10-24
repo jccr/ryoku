@@ -1168,7 +1168,7 @@ if [[ -x "$bindir/ryotunes" ]] && [[ -f "$HOME/.local/share/ryoku/ryotunes.commi
     "$HOME/.local/share/ryoku/ryotunes.commit" "$appshare"/icons/hicolor/*/apps/ryotunes.png
   say "retired the locally built ryotunes (the package takes over)"
 fi
-_rbase="https://repo.ryoku.dev/stable"
+_rbase="https://ryoku-repo.jccr.dev/stable"
 case "${RYOKU_CHANNEL:-$(sed -n 's/^RYOKU_CHANNEL=//p' "$HOME/.config/environment.d/ryoku.conf" 2>/dev/null)}" in
   unstable-dev) _rserver="$_rbase/channels/testing/\$arch" ;;
   *)            _rserver="$_rbase/\$arch" ;;
