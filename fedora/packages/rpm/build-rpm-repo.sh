@@ -205,13 +205,32 @@ reuse_source() {
   return 0
 }
 
+# A spec whose ExclusiveArch or ExcludeArch leaves this machine out has no
+# binary here; this architecture's repository is built without it.
+build_arch=$(rpm --eval '%{_target_cpu}')
+excluded_here() {
+  local allowed denied
+  allowed=$(rpm -qp --qf '[%{EXCLUSIVEARCH} ]' "$1") || die "could not read SRPM: $1"
+  denied=$(rpm -qp --qf '[%{EXCLUDEARCH} ]' "$1") || die "could not read SRPM: $1"
+  if [[ -n ${allowed// /} && " $allowed" != *" $build_arch "* ]]; then
+    return 0
+  fi
+  [[ " $denied" == *" $build_arch "* ]]
+}
+
 shopt -s nullglob
 source_rpms=("$srpms"/*.src.rpm)
 ((${#source_rpms[@]})) || die "no source RPMs found in $srpms"
 reused_sources=()
 built_sources=()
+skipped_sources=()
 for srpm in "${source_rpms[@]}"; do
   source=$(rpm -qp --qf '%{NAME}' "$srpm") || die "could not read SRPM: $srpm"
+  if excluded_here "$srpm"; then
+    skipped_sources+=("$source")
+    printf 'build-rpm-repo: Skipped %s (not built for %s)\n' "$source" "$build_arch"
+    continue
+  fi
   if [[ -n $mirror_input && -n ${upstream_sources[$source]:-} ]] \
     && reuse_source "$source"; then
     reused_sources+=("$source")
@@ -261,6 +280,7 @@ fi
 printf 'build-rpm-repo: Reused upstream packages: %s\n' \
   "${reused_sources[*]:-(none)}"
 printf 'build-rpm-repo: Built packages: %s\n' "${built_sources[*]:-(none)}"
+printf 'build-rpm-repo: Skipped on %s: %s\n' "$build_arch" "${skipped_sources[*]:-(none)}"
 
 cp "$upstream_manifest" "$out/upstream-inputs.tsv"
 
