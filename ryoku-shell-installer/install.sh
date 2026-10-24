@@ -82,8 +82,6 @@ main() {
   fi
   if [[ $ryoku_family == debian ]]; then
     say "Debian detected: the desktop is built from source, which takes a few minutes"
-  elif [[ $bin == ryoku-shell-install-aarch64 ]]; then
-    say "aarch64 detected: the desktop is built from source, which takes a few minutes"
   fi
 
   # global, not local: the EXIT trap fires after main returns, when a local is
