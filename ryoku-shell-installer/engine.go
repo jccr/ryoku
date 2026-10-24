@@ -2893,7 +2893,14 @@ func stepAUR(e *engine) error {
 			if err := e.cmd(filepath.Join(tmp, "yay-bin"), nil, "makepkg", "--noconfirm"); err != nil {
 				return err
 			}
-			built, _ := filepath.Glob(filepath.Join(tmp, "yay-bin", "*.pkg.tar.zst"))
+			// makepkg.conf picks the compression: .zst on Arch, .xz on Arch Linux ARM
+			var built []string
+			found, _ := filepath.Glob(filepath.Join(tmp, "yay-bin", "*.pkg.tar.*"))
+			for _, f := range found {
+				if !strings.HasSuffix(f, ".sig") {
+					built = append(built, f)
+				}
+			}
 			if len(built) == 0 {
 				return errors.New(i18n.T("yay-bin build produced no package"))
 			}
