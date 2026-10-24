@@ -10,12 +10,12 @@
 # heavy (full build + desktop install), so it is driven by the install-test
 # workflow (dispatch/schedule), never on every push.
 #
-#   installation/tests/container-install.sh [arch|cachyos]   (also RYOKU_TEST_BASE, default arch)
+#   installation/tests/container-install.sh [arch|cachyos|alarm]   (also RYOKU_TEST_BASE, default arch)
 set -euo pipefail
 
 BASE=${1:-${RYOKU_TEST_BASE:-arch}}
 REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
-ARCH=x86_64
+ARCH=$(uname -m)
 OUT="$REPO/release/repo/out/$ARCH"
 TESTUSER=ryokutest
 
@@ -24,12 +24,13 @@ die() { printf 'container-install: error: %s\n' "$*" >&2; exit 1; }
 
 [[ $EUID -eq 0 ]] || die "must run as root (installs packages); got uid $EUID"
 
-# CachyOS differs only in its extra signing keyring; everything downstream (build,
-# materialize, assertions) is identical.
+# CachyOS and Arch Linux ARM differ only in their signing keyrings; everything
+# downstream (build, materialize, assertions) is identical.
 case "$BASE" in
   arch)    keyring=(archlinux-keyring) ;;
   cachyos) keyring=(cachyos-keyring archlinux-keyring) ;;
-  *)       die "unknown base '$BASE' (want arch|cachyos)" ;;
+  alarm)   keyring=(archlinuxarm-keyring) ;;
+  *)       die "unknown base '$BASE' (want arch|cachyos|alarm)" ;;
 esac
 log "base: $BASE"
 
