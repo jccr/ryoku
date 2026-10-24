@@ -14,7 +14,7 @@ import (
 // cannot reinstall the package, because repo_gpgcheck needs the key to read the
 // repository it would come from; only the installer, which fetches and verifies
 // the key itself, gets such a machine back.
-const ryokuReleaseKeyFingerprint = "eb6d3c0f55a7b3caba6b2838847b274f025dd6e3"
+const ryokuReleaseKeyFingerprint = "f0f1a464b1d4cab4bec1bdee681f18c0880b2188"
 
 // keyring probes, variables so tests stub them.
 var (
