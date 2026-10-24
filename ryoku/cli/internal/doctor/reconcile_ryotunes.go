@@ -24,6 +24,15 @@ var (
 	ryotunesOwner  = func(path string) (string, error) {
 		return host.Default().PackageOwner(path)
 	}
+	// ryotunesOffered reports whether this machine has a Ryotunes package to
+	// install: the official Arch release carries x86_64 only, and a native
+	// repository may leave an architecture out.
+	ryotunesOffered = func(manager host.PackageManager) bool {
+		if manager == host.Pacman {
+			return host.MachineArch() == "x86_64"
+		}
+		return doctorPackageAvailability("ryotunes") == host.ExitOK
+	}
 )
 
 // Ryotunes is part of the Ryoku desktop and ships as a native repository package
@@ -53,6 +62,9 @@ func reconcileRyotunes(checkOnly bool) recResult {
 		installFix = "ryoku update"
 	}
 	managedDesktop := sys.ResolveRepo() != "" || doctorPackageInstalled("ryoku-desktop")
+	if managedDesktop && !installed && !ryotunesOffered(manager) {
+		return noteRes(i18n.T("Ryotunes is not built for this machine yet"))
+	}
 	desktopMissingRyotunes := managedDesktop && !installed && !removedByUser("ryotunes")
 	if desktopMissingRyotunes {
 		problems = append(problems, i18n.T("the ryotunes package is not installed"))
