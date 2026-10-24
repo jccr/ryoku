@@ -32,6 +32,13 @@ meson
 gradle
 libusb
 
+# skwd-paper-bin on aarch64 builds skwd-paper and its private FFmpeg from
+# source: nasm assembles FFmpeg, patchelf points the binaries at it. A host
+# missing a package only an architecture's skipped recipes need (gradle on
+# Arch Linux ARM) leaves it out; see publish-repo.yml.
+nasm
+patchelf
+
 # Qt: Blobs plays video, so qt6-multimedia joins the QML plugin's own modules,
 # and Ryoku.Spatial3D builds the Stage depth mesh against Qt Quick 3D.
 # The Ryogami picker also compiles against the Vulkan headers to list GPUs.

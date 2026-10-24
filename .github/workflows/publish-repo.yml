@@ -5,10 +5,12 @@ name: "Publish [ryoku] repo"
 # is bucket object <key>; the "stable" path segment is the mount, not the
 # channel):
 #
-#   x86_64/                         stable: the URL every installed box has
-#   releases/<tag>/x86_64/          one frozen, immutable copy per release tag
+#   <arch>/                         stable: the URL every installed box has
+#   releases/<tag>/<arch>/          one frozen, immutable copy per release tag
 #   releases/index.json             the release ledger the Hub and the site read
-#   channels/testing/x86_64/        testing: rebuilt on every push to unstable-dev
+#   channels/testing/<arch>/        testing: rebuilt on every push to unstable-dev
+#
+# <arch> is x86_64 or aarch64; each is built, gated and published on its own.
 #
 # A release tag (git push tag v*, or the Stable Release workflow dispatching
 # this on the tag) builds the set once into releases/<tag>/ -- an existing
@@ -62,14 +64,24 @@ concurrency:
 # shipped, and at 90 minutes the gate timed out and the publish was skipped.
 jobs:
   build:
-    name: Build and sign the [ryoku] repo
-    runs-on: ubuntu-latest
+    name: Build and sign the [ryoku] repo (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     # makepkg, repo-add, and pacman only exist on Arch, so the whole build runs
     # inside the official Arch image. Steps run as root; the actual makepkg work
     # is dropped to an unprivileged user below.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+            image: archlinux:latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+            image: docker.io/menci/archlinuxarm:latest
     container:
-      image: archlinux:latest
+      image: ${{ matrix.image }}
     outputs:
       channel: ${{ steps.channel.outputs.channel }}
       release: ${{ steps.channel.outputs.release }}
@@ -97,6 +109,14 @@ jobs:
 
       # Checkout and the first channel marker run before the full build
       # toolchain is available.
+      # pacman's Landlock sandbox cannot start in a container, and the Arch
+      # Linux ARM image ships an uninitialized keyring.
+      - name: Prepare pacman on Arch Linux ARM
+        if: matrix.arch == 'aarch64'
+        run: |
+          sed -i '/^\[options\]/a DisableSandbox' /etc/pacman.conf
+          pacman-key --init
+          pacman-key --populate archlinuxarm
       - name: Install checkout and channel tools
         run: pacman -Sy --noconfirm --needed git rclone jq
 
@@ -150,11 +170,11 @@ jobs:
           set -euo pipefail
           ./bin/ryoku-r2-config
           if [[ $CHANNEL == stable ]]; then
-            ./bin/ryoku-channel-status "Ryoku:$R2_BUCKET/x86_64" building "$GITHUB_SHA" \
+            ./bin/ryoku-channel-status "Ryoku:$R2_BUCKET/${{ matrix.arch }}" building "$GITHUB_SHA" \
               --channel "$CHANNEL" --release "$RELEASE" \
               --run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           else
-            ./bin/ryoku-channel-status "Ryoku:$R2_BUCKET/$PREFIX/x86_64" building "$GITHUB_SHA" \
+            ./bin/ryoku-channel-status "Ryoku:$R2_BUCKET/$PREFIX/${{ matrix.arch }}" building "$GITHUB_SHA" \
               --channel "$CHANNEL" --release "$RELEASE" \
               --run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           fi
@@ -167,9 +187,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .ccache
-          key: arch-ccache-${{ github.sha }}
+          key: arch-${{ matrix.arch }}-ccache-${{ github.sha }}
           restore-keys: |
-            arch-ccache-
+            arch-${{ matrix.arch }}-ccache-
 
       # Go's build and module caches are content-addressed; no package output
       # or repository metadata is restored from them.
@@ -179,9 +199,9 @@ jobs:
           path: |
             .gocache
             .gomod
-          key: arch-go-${{ github.sha }}
+          key: arch-${{ matrix.arch }}-go-${{ github.sha }}
           restore-keys: |
-            arch-go-
+            arch-${{ matrix.arch }}-go-
 
       - name: Install build toolchain
         run: |
@@ -192,7 +212,18 @@ jobs:
           mapfile -t pkgs < <(grep -vE '^[[:space:]]*(#|$)' release/repo/build-toolchain.packages)
           # ccache accelerates local compilation without becoming a package
           # dependency or changing the shared container-install toolchain.
-          pacman -Syu --noconfirm --needed "${pkgs[@]}" ccache
+          # Arch Linux ARM lacks a few tools only x86_64-only recipes use (gradle
+          # for the limine tools); build-repo.sh skips those recipes there.
+          pacman -Sy
+          available=()
+          for pkg in "${pkgs[@]}"; do
+            if pacman -Si "$pkg" >/dev/null 2>&1; then
+              available+=("$pkg")
+            else
+              echo "::notice::$pkg is not packaged for ${{ matrix.arch }}; left out"
+            fi
+          done
+          pacman -Syu --noconfirm --needed "${available[@]}" ccache
           sed -i 's/^BUILDENV=(\(.*\)!ccache/BUILDENV=(\1ccache/' /etc/makepkg.conf
 
       - name: Snapshot the published package set
@@ -212,7 +243,7 @@ jobs:
           # bytes under a name boxes may already hold, which is the skew the
           # whole layout exists to rule out. refuse unless forced by hand.
           if [[ $CHANNEL == stable ]] && [[ "${FORCE:-false}" != true ]]; then
-            if [[ -n "$(rclone lsf "Ryoku:$R2_BUCKET/$PREFIX/x86_64/" 2>/dev/null | head -n1)" ]]; then
+            if [[ -n "$(rclone lsf "Ryoku:$R2_BUCKET/$PREFIX/${{ matrix.arch }}/" 2>/dev/null | head -n1)" ]]; then
               echo "::error::$PREFIX/ already exists in the bucket; a release is published once. Re-run with force_release to overwrite."
               exit 1
             fi
@@ -229,13 +260,13 @@ jobs:
           # filename, wrong marker); it is a plain file copy to rebuild.
           mirror="$GITHUB_WORKSPACE/.published-mirror"
           mkdir -p "$mirror"
-          rclone copy "Ryoku:$R2_BUCKET/$PREFIX/x86_64/" "$mirror/" --include '*.pkg.tar.zst' || true
+          rclone copy "Ryoku:$R2_BUCKET/$PREFIX/${{ matrix.arch }}/" "$mirror/" --include '*.pkg.tar.zst' || true
           if [[ $CHANNEL == stable ]]; then
-            rclone copy "Ryoku:$R2_BUCKET/x86_64/" "$mirror/" --include '*.pkg.tar.zst' --ignore-existing || true
+            rclone copy "Ryoku:$R2_BUCKET/${{ matrix.arch }}/" "$mirror/" --include '*.pkg.tar.zst' --ignore-existing || true
             # rclone evaluates filters in order, so reject ryoku-desktop before
             # accepting the remaining packages. Its testing bytes carry the
             # wrong channel marker and must rebuild for stable.
-            rclone copy "Ryoku:$R2_BUCKET/channels/testing/x86_64/" "$mirror/" \
+            rclone copy "Ryoku:$R2_BUCKET/channels/testing/${{ matrix.arch }}/" "$mirror/" \
               --filter '- ryoku-desktop-*' \
               --filter '+ *.pkg.tar.zst' \
               --filter '- *' \
@@ -293,6 +324,7 @@ jobs:
             RYOKU_REPO_MIRROR="$GITHUB_WORKSPACE/.published-mirror" \
             RYOKU_RELEASE="$RYOKU_RELEASE" \
             RYOKU_CHANNEL="$RYOKU_CHANNEL" \
+            RYOKU_REPO_ARCH="${{ matrix.arch }}" \
             bash -euo pipefail -c '
               export GNUPGHOME="$(mktemp -d)"
               chmod 700 "$GNUPGHOME"
@@ -312,7 +344,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .ccache
-          key: arch-ccache-${{ github.sha }}
+          key: arch-${{ matrix.arch }}-ccache-${{ github.sha }}
 
       - name: Save Go caches
         if: always()
@@ -321,19 +353,19 @@ jobs:
           path: |
             .gocache
             .gomod
-          key: arch-go-${{ github.sha }}
+          key: arch-${{ matrix.arch }}-go-${{ github.sha }}
 
       - name: Pack the repo for the artifact transport
         # actions/upload-artifact refuses ':' in member paths (Windows
         # compatibility), and a package epoch puts one in the filename. The
         # repo dir is internal to this workflow -- the gate and the publish
         # both unpack this tar -- so it rides as one archive.
-        run: tar -C release/repo/out/x86_64 -cf release/repo/ryoku-repo.tar .
+        run: tar -C release/repo/out/${{ matrix.arch }} -cf release/repo/ryoku-repo.tar .
 
       - name: Keep the signed repo for the gate and the publish
         uses: actions/upload-artifact@v4
         with:
-          name: ryoku-repo-${{ github.run_id }}
+          name: ryoku-repo-${{ matrix.arch }}-${{ github.run_id }}
           path: release/repo/ryoku-repo.tar
           if-no-files-found: error
           retention-days: 3
@@ -364,14 +396,26 @@ jobs:
   container-install:
     name: "container install (${{ matrix.base }})"
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        base: [arch, cachyos]
+        include:
+          - base: arch
+            arch: x86_64
+            runner: ubuntu-latest
+            image: archlinux:latest
+          - base: cachyos
+            arch: x86_64
+            runner: ubuntu-latest
+            image: cachyos/cachyos:latest
+          - base: alarm
+            arch: aarch64
+            runner: ubuntu-24.04-arm
+            image: docker.io/menci/archlinuxarm:latest
     container:
-      image: ${{ matrix.base == 'cachyos' && 'cachyos/cachyos:latest' || 'archlinux:latest' }}
+      image: ${{ matrix.image }}
     steps:
       - name: Install git
         # A fresh base container ships an unpopulated pacman keyring, so the
@@ -382,8 +426,11 @@ jobs:
         # never lowered, so a genuinely unsigned package still fails the gate.
         run: |
           set -euo pipefail
+          if [ "${{ matrix.base }}" = alarm ]; then
+            sed -i '/^\[options\]/a DisableSandbox' /etc/pacman.conf
+          fi
           pacman-key --init
-          pacman-key --populate archlinux
+          if [ "${{ matrix.base }}" = alarm ]; then pacman-key --populate archlinuxarm; else pacman-key --populate archlinux; fi
           if [ "${{ matrix.base }}" = cachyos ]; then pacman-key --populate cachyos || true; fi
           if ! pacman -Sy --noconfirm --needed git; then
             # A mutable base image can also ship a keyring older than its own
@@ -403,23 +450,28 @@ jobs:
       - name: Fetch the signed repo
         uses: actions/download-artifact@v4
         with:
-          name: ryoku-repo-${{ github.run_id }}
+          name: ryoku-repo-${{ matrix.arch }}-${{ github.run_id }}
           path: release/repo
       - name: Unpack the signed repo
         run: |
-          mkdir -p release/repo/out/x86_64
-          tar -C release/repo/out/x86_64 -xf release/repo/ryoku-repo.tar
+          mkdir -p release/repo/out/${{ matrix.arch }}
+          tar -C release/repo/out/${{ matrix.arch }} -xf release/repo/ryoku-repo.tar
       - name: Install and verify the config
         run: RYOKU_PREBUILT_REPO=1 installation/tests/container-install.sh ${{ matrix.base }}
 
   publish:
     # only after the gate passes on every base; uploads the bytes it tested.
+    name: "Publish the [ryoku] repo (${{ matrix.arch }})"
     needs: [build, container-install, gate]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       contents: read
       actions: write
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, aarch64]
     container:
       image: archlinux:latest
     steps:
@@ -435,12 +487,12 @@ jobs:
       - name: Fetch the signed repo
         uses: actions/download-artifact@v4
         with:
-          name: ryoku-repo-${{ github.run_id }}
+          name: ryoku-repo-${{ matrix.arch }}-${{ github.run_id }}
           path: release/repo
       - name: Unpack the signed repo
         run: |
-          mkdir -p release/repo/out/x86_64
-          tar -C release/repo/out/x86_64 -xf release/repo/ryoku-repo.tar
+          mkdir -p release/repo/out/${{ matrix.arch }}
+          tar -C release/repo/out/${{ matrix.arch }} -xf release/repo/ryoku-repo.tar
       - name: Configure the bucket
         env:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -475,15 +527,15 @@ jobs:
             rclone sync "$src" "$remote" --exclude 'release.json' --exclude 'status.json' -P
             rclone copyto "$src/release.json" "${remote%/}/release.json" -P
           }
-          src="$GITHUB_WORKSPACE/release/repo/out/x86_64"
-          publish "$src" "Ryoku:$R2_BUCKET/$PREFIX/x86_64/"
-          echo "::notice::Published [ryoku] $CHANNEL to $PREFIX/x86_64/ (packages first, db last, stale pruned)"
+          src="$GITHUB_WORKSPACE/release/repo/out/${{ matrix.arch }}"
+          publish "$src" "Ryoku:$R2_BUCKET/$PREFIX/${{ matrix.arch }}/"
+          echo "::notice::Published [ryoku] $CHANNEL to $PREFIX/${{ matrix.arch }}/ (packages first, db last, stale pruned)"
           if [[ $CHANNEL == stable ]]; then
             # the release directory is complete and verified below before the
             # pointer moves, so a box that syncs mid-run sees either the old
             # stable or the new one, never a half-copied set.
-            publish "$src" "Ryoku:$R2_BUCKET/x86_64/"
-            echo "::notice::Stable pointer x86_64/ now serves $PREFIX"
+            publish "$src" "Ryoku:$R2_BUCKET/${{ matrix.arch }}/"
+            echo "::notice::Stable pointer ${{ matrix.arch }}/ now serves $PREFIX"
           fi
 
       - name: Verify the published repo against the bucket
@@ -519,9 +571,9 @@ jobs:
             done
             return "$bad"
           }
-          verify "Ryoku:$R2_BUCKET/$PREFIX/x86_64"
+          verify "Ryoku:$R2_BUCKET/$PREFIX/${{ matrix.arch }}"
           if [[ $CHANNEL == stable ]]; then
-            verify "Ryoku:$R2_BUCKET/x86_64"
+            verify "Ryoku:$R2_BUCKET/${{ matrix.arch }}"
           fi
 
       - name: Freeze the testing build and update its ledger
@@ -531,10 +583,10 @@ jobs:
           RELEASE: ${{ needs.build.outputs.release }}
         run: |
           set -euo pipefail
-          src="$GITHUB_WORKSPACE/release/repo/out/x86_64"
+          src="$GITHUB_WORKSPACE/release/repo/out/${{ matrix.arch }}"
           [[ -s $src/release.json ]] || { echo "::error::Tested repository has no release.json"; exit 1; }
           directory=${RELEASE//+/_}
-          frozen="$REMOTE/channels/testing/builds/$directory/x86_64"
+          frozen="$REMOTE/channels/testing/builds/$directory/${{ matrix.arch }}"
 
           # release.json is the completion marker consumed by the ledger.
           rclone sync "$src" "$frozen/" --exclude 'release.json' -P
@@ -563,7 +615,7 @@ jobs:
           echo "::notice::releases/index.json now lists $RELEASE as latest"
 
       - name: Dispatch the release ISO builds
-        if: needs.build.outputs.channel == 'stable'
+        if: needs.build.outputs.channel == 'stable' && matrix.arch == 'x86_64'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE: ${{ needs.build.outputs.release }}
@@ -597,11 +649,11 @@ jobs:
         run: |
           set -euo pipefail
           if [[ $CHANNEL == stable ]]; then
-            ./bin/ryoku-channel-status "Ryoku:$R2_BUCKET/x86_64" published "$GITHUB_SHA" \
+            ./bin/ryoku-channel-status "Ryoku:$R2_BUCKET/${{ matrix.arch }}" published "$GITHUB_SHA" \
               --channel "$CHANNEL" --release "$RELEASE" \
               --run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           else
-            ./bin/ryoku-channel-status "Ryoku:$R2_BUCKET/$PREFIX/x86_64" published "$GITHUB_SHA" \
+            ./bin/ryoku-channel-status "Ryoku:$R2_BUCKET/$PREFIX/${{ matrix.arch }}" published "$GITHUB_SHA" \
               --channel "$CHANNEL" --release "$RELEASE" \
               --run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           fi
@@ -645,15 +697,17 @@ jobs:
         run: |
           set -euo pipefail
           ./bin/ryoku-r2-config
-          if [[ $CHANNEL == stable ]]; then
-            ./bin/ryoku-channel-status "Ryoku:$R2_BUCKET/x86_64" failed "$GITHUB_SHA" \
-              --channel "$CHANNEL" --release "$RELEASE" \
-              --run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-          else
-            ./bin/ryoku-channel-status "Ryoku:$R2_BUCKET/$PREFIX/x86_64" failed "$GITHUB_SHA" \
-              --channel "$CHANNEL" --release "$RELEASE" \
-              --run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-          fi
+          for arch in x86_64 aarch64; do
+            if [[ $CHANNEL == stable ]]; then
+              ./bin/ryoku-channel-status "Ryoku:$R2_BUCKET/$arch" failed "$GITHUB_SHA" \
+                --channel "$CHANNEL" --release "$RELEASE" \
+                --run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            else
+              ./bin/ryoku-channel-status "Ryoku:$R2_BUCKET/$PREFIX/$arch" failed "$GITHUB_SHA" \
+                --channel "$CHANNEL" --release "$RELEASE" \
+                --run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            fi
+          done
 
 
   # A failed publish strands a whole set of commits on the channel: testers keep
