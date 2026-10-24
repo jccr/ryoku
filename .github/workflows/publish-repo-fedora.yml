@@ -7,6 +7,8 @@ on:
   push:
     branches:
       - unstable-dev
+      # the fork publishes its aarch64 work in progress to its own testing channel
+      - 'aarch64-phase*'
     tags:
       - 'v*'
   workflow_dispatch:
@@ -85,10 +87,6 @@ jobs:
               channel=stable
               ;;
             refs/heads/*)
-              if [[ $GITHUB_REF != refs/heads/unstable-dev && $GITHUB_EVENT_NAME != workflow_dispatch ]]; then
-                echo "::error::a branch other than unstable-dev publishes testing only when dispatched; got $GITHUB_REF"
-                exit 1
-              fi
               release=$(./bin/ryoku-release-version \
                 --channel unstable-dev \
                 --build-number "$GITHUB_RUN_NUMBER" \
