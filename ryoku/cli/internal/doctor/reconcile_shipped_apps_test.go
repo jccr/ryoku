@@ -137,8 +137,15 @@ func TestSupportedShippedAppsSkipsWhatThisHostCannotInstall(t *testing.T) {
 	if strings.Join(unavailable, ",") != "waifu2x-ncnn-vulkan,untranslated" {
 		t.Fatalf("unavailable = %v", unavailable)
 	}
+	oldArch := host.MachineArch
+	t.Cleanup(func() { host.MachineArch = oldArch })
+	host.MachineArch = func() string { return "x86_64" }
 	if supported, unavailable := supportedShippedApps(host.Pacman, apps); len(supported) != 3 || unavailable != nil {
-		t.Fatalf("pacman: supported = %v, unavailable = %v; pacman installs every shipped app", supported, unavailable)
+		t.Fatalf("x86_64 pacman: supported = %v, unavailable = %v; it installs every shipped app", supported, unavailable)
+	}
+	host.MachineArch = func() string { return "aarch64" }
+	if supported, unavailable := supportedShippedApps(host.Pacman, apps); len(supported) != 1 || len(unavailable) != 2 {
+		t.Fatalf("aarch64 pacman: supported = %v, unavailable = %v; want the unavailable ones skipped", supported, unavailable)
 	}
 }
 
@@ -155,9 +162,12 @@ func withShippedAppTestState(t *testing.T, present map[string]bool) {
 	installShippedApps = func([]string) {}
 	markAppsExplicit = func([]string) {}
 	hasPacman = func() bool { return true } // the CI runner has no pacman
+	oldArch := host.MachineArch
+	host.MachineArch = func() string { return "x86_64" } // x86_64 Arch serves every app
 	t.Cleanup(func() {
 		appInstalled, appInstalledAsDep = oldInstalled, oldDep
 		installShippedApps, markAppsExplicit = oldInstall, oldExplicit
 		hasPacman = oldHas
+		host.MachineArch = oldArch
 	})
 }
