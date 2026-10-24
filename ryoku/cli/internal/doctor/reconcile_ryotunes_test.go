@@ -19,12 +19,15 @@ func TestRyotunesUsesNativeRepositoryOutsidePacman(t *testing.T) {
 			oldInstalled := doctorPackageInstalled
 			oldAdvice := doctorInstallAdvice
 			oldEnsure := ryotunesEnsure
+			oldOffered := ryotunesOffered
 			t.Cleanup(func() {
 				doctorPackageManager = oldManager
 				doctorPackageInstalled = oldInstalled
 				doctorInstallAdvice = oldAdvice
 				ryotunesEnsure = oldEnsure
+				ryotunesOffered = oldOffered
 			})
+			ryotunesOffered = func(host.PackageManager) bool { return true }
 
 			t.Setenv("HOME", t.TempDir())
 			bin := t.TempDir()
@@ -69,12 +72,15 @@ func TestRyotunesNativeRepositoryCheckOnlyUsesHostAdvice(t *testing.T) {
 	oldInstalled := doctorPackageInstalled
 	oldInstall := doctorPackageInstall
 	oldAdvice := doctorInstallAdvice
+	oldOffered := ryotunesOffered
 	t.Cleanup(func() {
 		doctorPackageManager = oldManager
 		doctorPackageInstalled = oldInstalled
 		doctorPackageInstall = oldInstall
 		doctorInstallAdvice = oldAdvice
+		ryotunesOffered = oldOffered
 	})
+	ryotunesOffered = func(host.PackageManager) bool { return true }
 
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
@@ -92,5 +98,32 @@ func TestRyotunesNativeRepositoryCheckOnlyUsesHostAdvice(t *testing.T) {
 	}
 	if result.remedy != "sudo dnf install -y ryotunes" {
 		t.Fatalf("remedy = %q", result.remedy)
+	}
+}
+
+func TestRyotunesSkipsAMachineWithNoPackage(t *testing.T) {
+	oldManager := doctorPackageManager
+	oldInstalled := doctorPackageInstalled
+	oldEnsure := ryotunesEnsure
+	oldArch := host.MachineArch
+	t.Cleanup(func() {
+		doctorPackageManager = oldManager
+		doctorPackageInstalled = oldInstalled
+		ryotunesEnsure = oldEnsure
+		host.MachineArch = oldArch
+	})
+
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	doctorPackageManager = func() (host.PackageManager, error) { return host.Pacman, nil }
+	doctorPackageInstalled = func(name string) bool { return name == "ryoku-desktop" }
+	host.MachineArch = func() string { return "aarch64" }
+	ryotunesEnsure = func(context.Context) (ryotunesrelease.Status, error) {
+		t.Fatal("tried to install the x86_64 release on aarch64")
+		return ryotunesrelease.Status{}, nil
+	}
+
+	if result := reconcileRyotunes(false); result.status != recNote {
+		t.Fatalf("status = %s, detail = %q; want a note", result.status.label(), result.detail)
 	}
 }
