@@ -4,14 +4,13 @@
 Name:           ryotunes
 Epoch:          1
 Version:        1.1.6
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Native music app for the Ryoku desktop
 License:        GPL-3.0-or-later
 URL:            https://github.com/ryoku-dev/ryotunes
 Source0:        ryotunes-%{version}.tar.gz
 Source1:        ryotunes-%{version}-node_modules.tar.gz
 Source100:      %{name}-%{version}-vendor.tar.gz
-ExclusiveArch:  x86_64
 
 BuildRequires:  cargo
 BuildRequires:  rust
