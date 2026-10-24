@@ -2137,11 +2137,11 @@ func (e *engine) dropUnavailableRPMs(pkgs []string) []string {
 	if e.dry || len(pkgs) == 0 {
 		return pkgs
 	}
+	// a read-only query run as the user: without --nogpgcheck dnf stops to
+	// offer importing a repository key it cannot import, and fails
 	dnf := fedoraDNFCommand()
-	out, err := exec.Command(dnf, append([]string{"repoquery", "-q", "--available", "--qf", "%{name}.%{arch}\n"}, pkgs...)...).Output()
-	if err != nil {
-		return pkgs
-	}
+	query := []string{"repoquery", "-q", "--available", "--nogpgcheck"}
+	out, _ := exec.Command(dnf, append(append(query, "--qf", "%{name}.%{arch}\n"), pkgs...)...).Output()
 	carried := map[string]bool{}
 	for _, nevra := range strings.Fields(string(out)) {
 		carried[nevra] = true
@@ -2160,7 +2160,7 @@ func (e *engine) dropUnavailableRPMs(pkgs []string) []string {
 			keep = append(keep, pkg)
 			continue
 		}
-		provider, _ := exec.Command(dnf, "repoquery", "-q", "--available", "--whatprovides", pkg).Output()
+		provider, _ := exec.Command(dnf, append(query, "--whatprovides", pkg)...).Output()
 		if strings.TrimSpace(string(provider)) != "" {
 			keep = append(keep, pkg)
 			continue
