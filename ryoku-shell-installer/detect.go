@@ -87,7 +87,7 @@ func dnsAddressFiltered(ip net.IP) bool {
 }
 
 func ryokuDNSFiltered(lookup func(string) ([]net.IP, error)) bool {
-	addresses, err := lookup("repo.ryoku.dev")
+	addresses, err := lookup("ryoku-repo.jccr.dev")
 	if err != nil {
 		return false
 	}
@@ -283,7 +283,7 @@ func detect() *facts {
 	f.filteredDNS = ryokuDNSFiltered(net.LookupIP)
 	if !f.filteredDNS {
 		client := &http.Client{Timeout: 6 * time.Second}
-		if resp, err := client.Head("https://repo.ryoku.dev/stable/x86_64/ryoku.db"); err == nil {
+		if resp, err := client.Head("https://ryoku-repo.jccr.dev/stable/x86_64/ryoku.db"); err == nil {
 			resp.Body.Close()
 			f.online = resp.StatusCode < 500
 		}

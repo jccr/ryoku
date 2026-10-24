@@ -295,7 +295,7 @@ func setupXBPSReleaseHost(t *testing.T) string {
 	if err := os.MkdirAll(configDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(shipped, []byte("repository=https://repo.ryoku.dev/stable/void/x86_64\n"), 0o644); err != nil {
+	if err := os.WriteFile(shipped, []byte("repository=https://ryoku-repo.jccr.dev/stable/void/x86_64\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("RYOKU_XBPS_CONFIG_DIR", configDir)

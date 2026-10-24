@@ -190,7 +190,7 @@ func loadEditionCompositors(client httpDoer, d *distro, ref, payload string) (ed
 		}
 		return parseEditionCompositors(data)
 	}
-	url := "https://raw.githubusercontent.com/ryoku-dev/ryoku/" + ref + "/" + d.id + "/packages/translations.tsv"
+	url := "https://raw.githubusercontent.com/jccr/ryoku/" + ref + "/" + d.id + "/packages/translations.tsv"
 	resp, err := httpStatusOK(client, http.MethodGet, url)
 	if err != nil {
 		return editionCompositorPlan{}, fmt.Errorf(i18n.T("read %s installer choices from %s: %w"), d.name, url, err)

@@ -28,7 +28,7 @@ func TestRyokuDNSFiltered(t *testing.T) {
 	}
 
 	if !ryokuDNSFiltered(func(host string) ([]net.IP, error) {
-		if host != "repo.ryoku.dev" {
+		if host != "ryoku-repo.jccr.dev" {
 			t.Fatalf("lookup host = %q", host)
 		}
 		return []net.IP{net.ParseIP("10.10.34.35")}, nil
