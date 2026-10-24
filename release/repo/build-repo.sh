@@ -161,8 +161,22 @@ adopt_published() {
   return 0
 }
 
+# a PKGBUILD whose arch=() leaves out the target (an upstream x86_64 binary,
+# the GraalVM-built limine tools) has no package for it; makepkg would refuse
+# to build it, so it is skipped and this architecture's repo goes without it.
+builds_for_target() {
+  (cd "$1" && makepkg --printsrcinfo 2>/dev/null) \
+    | awk -v want="$REPO_ARCH" '$1 == "arch" && ($3 == want || $3 == "any") { found = 1 } END { exit !found }'
+}
+
+skipped=()
 for pkgbuild in "${pkgbuilds[@]}"; do
   pkgdir=$(dirname "$pkgbuild")
+  if ! builds_for_target "$pkgdir"; then
+    log "Skipping $(basename "$pkgdir") (not built for $REPO_ARCH)"
+    skipped+=("$(basename "$pkgdir")")
+    continue
+  fi
   if adopt_published "$pkgdir"; then
     log "Adopted published bytes for $(basename "$pkgdir") (already on the mirror; filenames are immutable once live)"
     continue
@@ -199,9 +213,16 @@ done
 # Import after mirror adoption: verified official bytes must not be replaced by
 # a cached distro build. The shared importer verifies checksum/identity/epoch
 # and re-signs the unchanged package; the scheduled refresh uses it too.
-log "Importing ryotunes from its GitHub release channel"
-RYOKU_REPO_KEY="$KEY_ID" "$SCRIPT_DIR/import-ryotunes.sh" "$ARCH_DIR" >/dev/null \
-  || die "could not import the official ryotunes release into $ARCH_DIR"
+# The ryotunes release carries an x86_64 package only.
+if [[ $REPO_ARCH == x86_64 ]]; then
+  log "Importing ryotunes from its GitHub release channel"
+  RYOKU_REPO_KEY="$KEY_ID" "$SCRIPT_DIR/import-ryotunes.sh" "$ARCH_DIR" >/dev/null \
+    || die "could not import the official ryotunes release into $ARCH_DIR"
+else
+  log "Skipping ryotunes (its releases carry no $REPO_ARCH package)"
+  skipped+=(ryotunes)
+fi
+(( ${#skipped[@]} == 0 )) || log "Not in the $REPO_ARCH repo: ${skipped[*]}"
 
 # 4. collect built packages, confirm each is signed before indexing.
 packages=("$ARCH_DIR"/*.pkg.tar.zst)
