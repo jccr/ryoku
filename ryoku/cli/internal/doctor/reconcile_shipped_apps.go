@@ -67,7 +67,8 @@ func planShippedApps(apps []shippedApp, installed, asDep, seen map[string]bool) 
 // does not provide, and one it maps that no enabled repository builds for this
 // machine (waifu2x-ncnn-vulkan on aarch64). Either would fail the whole batch.
 func supportedShippedApps(manager host.PackageManager, apps []shippedApp) (supported []shippedApp, unavailable []string) {
-	if manager == host.Pacman {
+	// x86_64 Arch serves every shipped app; Arch Linux ARM lacks some (mangohud)
+	if manager == host.Pacman && host.MachineArch() == "x86_64" {
 		return apps, nil
 	}
 	for _, app := range apps {
