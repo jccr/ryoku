@@ -12,7 +12,7 @@ pkgver=${RYOKU_PKGVER:-0.1.0}
 pkgrel=3
 pkgdesc="Ryoku desktop: Quickshell configuration, helpers, and runtime (compositor-neutral base)"
 # package() compiles Go helpers (ryovm-fetch), so the payload is arch-specific.
-arch=('x86_64')
+arch=('x86_64' 'aarch64')
 url="https://ryoku.dev"
 # The Python bar style's ported QML stays AGPL-3.0-or-later (Serpantinum) and
 # the Ryoku Discord theme for Vesktop is MIT; the rest of the package is
@@ -206,7 +206,11 @@ depends=(
   # pad is not detected at all (users had to install linux-headers + dkms by
   # hand). linux-headers matches the base `linux` kernel; dkms's alpm hooks then
   # (re)build the module whenever headers land, so `ryoku update` pulling these
-  # onto an existing box rebuilds an already-installed pad driver.
+  # onto an existing box rebuilds an already-installed pad driver. They are
+  # x86_64-only below: an aarch64 board runs its own kernel (linux-asahi on a
+  # Mac), whose headers the base `linux-headers` does not match.
+)
+depends_x86_64=(
   'linux-headers'
   'dkms'
 )
