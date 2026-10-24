@@ -201,7 +201,7 @@ func TestFedoraPackageChannelRestoresSignedStableRepo(t *testing.T) {
 	if result.status != recFixed || !refreshed {
 		t.Fatalf("channel repair result = %+v refreshed=%v", result, refreshed)
 	}
-	const wantConfig = "[ryoku]\nname=Ryoku\nbaseurl=https://repo.example/x86_64\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-ryoku\n"
+	const wantConfig = "[ryoku]\nname=Ryoku\nbaseurl=https://repo.example/$basearch\nenabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-ryoku\n"
 	if gotPath != path || gotConfig != wantConfig {
 		t.Fatalf("repo config = path %q body %q", gotPath, gotConfig)
 	}

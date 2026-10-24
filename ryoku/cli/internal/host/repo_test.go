@@ -118,8 +118,11 @@ func TestRepoReleaseBaseOverrideForBothManagers(t *testing.T) {
 	for _, manager := range []PackageManager{Pacman, XBPS, DNF} {
 		t.Run(string(manager), func(t *testing.T) {
 			arch := "$arch"
-			if manager == XBPS || manager == DNF {
+			switch manager {
+			case XBPS:
 				arch = "x86_64"
+			case DNF:
+				arch = "$basearch"
 			}
 			for _, channel := range []string{"stable", "testing", "v1.2.3", build} {
 				url := RepoURLFor(manager, channel)
@@ -203,7 +206,7 @@ func TestRepoProductionBasesWithoutOverride(t *testing.T) {
 	if got := RepoURLFor(XBPS, "stable"); got != XBPSRepoBase+"/x86_64" {
 		t.Fatalf("XBPS stable URL = %q", got)
 	}
-	if got := RepoURLFor(DNF, "stable"); got != DNFRepoBase+"/x86_64" {
+	if got := RepoURLFor(DNF, "stable"); got != DNFRepoBase+"/$basearch" {
 		t.Fatalf("DNF stable URL = %q", got)
 	}
 }
@@ -279,15 +282,15 @@ func TestDNFRepoURLRoundTrips(t *testing.T) {
 		if got := RepoChannelOf(DNF, url); got != channel {
 			t.Errorf("RepoChannelOf(DNF, %q) = %q, want %q", url, got, channel)
 		}
-		for _, arch := range []string{"x86_64", "$basearch", "$arch"} {
+		for _, arch := range []string{"x86_64", "aarch64", "$basearch", "$arch"} {
 			concrete := strings.Replace(url, "$releasever", "44", 1)
-			concrete = strings.TrimSuffix(concrete, "x86_64") + arch
+			concrete = strings.TrimSuffix(concrete, "$basearch") + arch
 			if got := RepoChannelOf(DNF, concrete); got != channel {
 				t.Errorf("RepoChannelOf(DNF, %q) = %q, want %q", concrete, got, channel)
 			}
 		}
 	}
-	if got := RepoURLFor(DNF, "stable"); got != DNFRepoBase+"/x86_64" {
+	if got := RepoURLFor(DNF, "stable"); got != DNFRepoBase+"/$basearch" {
 		t.Fatalf("DNF stable URL = %q", got)
 	}
 
@@ -309,10 +312,15 @@ func TestExpandDNFRepoURL(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("RYOKU_OS_RELEASE", osRelease)
+	old := MachineArch
+	t.Cleanup(func() { MachineArch = old })
 	raw := "https://repo.example/fedora/$releasever/channels/testing/$basearch/$arch"
-	want := "https://repo.example/fedora/44/channels/testing/x86_64/x86_64"
-	if got := ExpandRepoURL(raw); got != want {
-		t.Fatalf("ExpandRepoURL = %q, want %q", got, want)
+	for _, arch := range []string{"x86_64", "aarch64"} {
+		MachineArch = func() string { return arch }
+		want := "https://repo.example/fedora/44/channels/testing/" + arch + "/" + arch
+		if got := ExpandRepoURL(raw); got != want {
+			t.Fatalf("ExpandRepoURL on %s = %q, want %q", arch, got, want)
+		}
 	}
 }
 

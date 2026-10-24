@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"ryoku-cli/internal/host"
 )
 
 func TestChannelBuildStatusParsesStatus(t *testing.T) {
@@ -22,6 +24,9 @@ func TestChannelBuildStatusParsesStatus(t *testing.T) {
 	defer server.Close()
 	t.Setenv("RYOKU_RELEASE_BASE", server.URL)
 	t.Setenv("RYOKU_HOST_PKGMGR", "pacman")
+	old := host.MachineArch
+	host.MachineArch = func() string { return "x86_64" }
+	t.Cleanup(func() { host.MachineArch = old })
 
 	build, ok := channelBuildStatus("testing")
 	if !ok {
