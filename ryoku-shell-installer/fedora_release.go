@@ -32,9 +32,14 @@ func osReleaseField(text, key string) string {
 	return ""
 }
 
+// hostBasearch is dnf's $basearch for this machine: uname -m on the x86_64 and
+// aarch64 hosts Ryoku publishes for.
+var hostBasearch = func() string { return out("uname", "-m") }
+
 func fedoraReleaseRepoURL(ref, release string) string {
 	_, repository := fedoraRepository(ref)
-	return strings.ReplaceAll(repository, "$releasever", release) + "/repodata/repomd.xml"
+	repository = strings.ReplaceAll(repository, "$releasever", release)
+	return strings.ReplaceAll(repository, "$basearch", hostBasearch()) + "/repodata/repomd.xml"
 }
 
 func httpStatusOK(client httpDoer, method, url string) (*http.Response, error) {

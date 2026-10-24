@@ -42,8 +42,8 @@ const (
 	voidRepoConfig       = "/etc/xbps.d/20-ryoku.conf"
 	voidSystemRepo       = "/usr/share/xbps.d/20-ryoku.conf"
 	voidTrustedKeyDir    = "/var/db/xbps/keys"
-	fedoraStableRepo     = "https://repo.ryoku.dev/stable/fedora/$releasever/x86_64"
-	fedoraTestingRepo    = "https://repo.ryoku.dev/stable/fedora/$releasever/channels/testing/x86_64"
+	fedoraStableRepo     = "https://repo.ryoku.dev/stable/fedora/$releasever/$basearch"
+	fedoraTestingRepo    = "https://repo.ryoku.dev/stable/fedora/$releasever/channels/testing/$basearch"
 	fedoraRepoConfig     = "/etc/yum.repos.d/ryoku.repo"
 	fedoraRepoDir        = "/etc/yum.repos.d"
 	fedoraKeyPath        = "/etc/pki/rpm-gpg/RPM-GPG-KEY-ryoku"
@@ -84,7 +84,7 @@ func fedoraRepository(ref string) (channel, repository string) {
 		channel, repository = "testing", fedoraTestingRepo
 	case fedoraReleaseTagRe.MatchString(ref):
 		channel = ref
-		repository = "https://repo.ryoku.dev/stable/fedora/$releasever/releases/" + ref + "/x86_64"
+		repository = "https://repo.ryoku.dev/stable/fedora/$releasever/releases/" + ref + "/$basearch"
 	default:
 		channel, repository = "stable", fedoraStableRepo
 	}
