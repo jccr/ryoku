@@ -50,7 +50,7 @@ const (
 	fedoraRepoDir        = "/etc/yum.repos.d"
 	fedoraKeyPath        = "/etc/pki/rpm-gpg/RPM-GPG-KEY-ryoku"
 	fedoraKeyURL         = "https://repo.ryoku.dev/stable/ryoku-release-key.pub.asc"
-	fedoraKeyFingerprint = "EB6D3C0F55A7B3CABA6B2838847B274F025DD6E3"
+	fedoraKeyFingerprint = "F0F1A464B1D4CAB4BEC1BDEE681F18C0880B2188"
 	cachyosMirrorDB      = "https://mirror.cachyos.org/repo/x86_64_v3/cachyos-v3/cachyos-v3.db"
 )
 

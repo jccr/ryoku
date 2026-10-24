@@ -9,7 +9,7 @@ import (
 
 const (
 	revokedTestKey = "1111111111111111111111111111111111111111"
-	currentTestKey = "eb6d3c0f55a7b3caba6b2838847b274f025dd6e3"
+	currentTestKey = "f0f1a464b1d4cab4bec1bdee681f18c0880b2188"
 )
 
 func stubRevokedKeys(t *testing.T, revoked []string, revokedErr error, trusted []string) *[]string {

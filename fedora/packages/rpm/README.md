@@ -128,7 +128,7 @@ Rebuild and assemble the signed repository with:
 ```sh
 RYOKU_SRPM_IN=/tmp/ryoku-srpms \
 RYOKU_RPM_OUT=/tmp/ryoku-rpm-repo \
-RYOKU_RPM_SIGNING_KEY=EB6D3C0F55A7B3CABA6B2838847B274F025DD6E3 \
+RYOKU_RPM_SIGNING_KEY=F0F1A464B1D4CAB4BEC1BDEE681F18C0880B2188 \
   fedora/packages/rpm/build-rpm-repo.sh
 ```
 
