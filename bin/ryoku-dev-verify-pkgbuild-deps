@@ -43,7 +43,9 @@ fi
 provides=$(
 	for db in /var/lib/pacman/sync/*.db; do
 		[[ -r $db ]] || continue
-		tar -xOf "$db" --wildcards '*/desc' 2>/dev/null |
+		# Arch Linux ARM's dbs keep the older layout, %PROVIDES% in a separate
+		# depends entry beside desc, so both are read.
+		tar -xOf "$db" --wildcards '*/desc' '*/depends' 2>/dev/null |
 			awk '/^%PROVIDES%$/{f=1;next} /^%/{f=0} f'
 	done | sed 's/[<>=].*//' | sort -u
 )
@@ -63,9 +65,15 @@ done | sed 's/[<>=].*//')
 # Ryotunes is imported as an official binary, not built from a local PKGBUILD.
 internal+=$'\n'ryotunes
 
+# Only the packages this machine builds, with their depends for its
+# architecture: an aarch64 runner checks against Arch Linux ARM's dbs, which
+# lack what an x86_64-only package (or a depends_x86_64 entry) needs.
+carch=$(uname -m)
 missing=0
 for p in release/packages/*/PKGBUILD; do
-	mapfile -t deps < <(bash -c 'source "$1" >/dev/null 2>&1; printf "%s\n" "${depends[@]:-}"' _ "$p")
+	arches=$(bash -c 'source "$1" >/dev/null 2>&1; printf " %s" "${arch[@]}"' _ "$p")
+	[[ "$arches " == *" $carch "* || "$arches " == *" any "* ]] || continue
+	mapfile -t deps < <(bash -c 'source "$1" >/dev/null 2>&1; d="depends_$2[@]"; printf "%s\n" "${depends[@]:-}" "${!d:-}"' _ "$p" "$carch")
 	for d in "${deps[@]}"; do
 		d="${d%%[<>=]*}"
 		[[ -z $d ]] && continue
