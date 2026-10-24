@@ -1,30 +1,73 @@
 # Maintainer: Ryoku <releases@ryoku.dev>
 #
-# skwd-paper, the renderer Ryogami drives for Wallpaper Engine scenes, repackaged
-# from the upstream prebuilt Arch package. Pinned: bump pkgver and sha256sums to
-# follow a release, pkgrel alone for a recipe change.
+# skwd-paper, the renderer Ryogami drives for Wallpaper Engine scenes. On x86_64
+# it is repackaged from the upstream prebuilt Arch package. Upstream publishes
+# no aarch64 build, so aarch64 builds the same release from source, from the
+# commit the Fedora spec and the Void template pin (the jccr/skwd-paper fork:
+# upstream plus its aarch64 c_char fix), with FFmpeg built privately the same
+# way. Pinned: bump pkgver and the checksums to follow a release, pkgrel alone
+# for a recipe change.
 pkgname=skwd-paper-bin
 pkgver=1.0.0_beta.23
 pkgrel=1
 pkgdesc="skwd-paper: still, video and Wallpaper Engine wallpaper renderers (Ryogami's Wallpaper Engine backend)"
-arch=('x86_64')
+arch=('x86_64' 'aarch64')
 url="https://github.com/liixini/skwd-wall"
 license=('GPL-3.0-or-later')
-# Runtime libraries of the prebuilt binaries, from the upstream .PKGINFO; FFmpeg ships privately inside.
+# Runtime libraries of the binaries, from the upstream .PKGINFO; FFmpeg ships privately inside.
 depends=('alsa-lib' 'dav1d' 'gcc-libs' 'libdrm' 'libglvnd' 'libpulse' 'libva'
          'libxkbcommon' 'libyuv' 'shaderc' 'vulkan-icd-loader' 'wayland' 'zlib')
+makedepends_aarch64=('cargo' 'clang' 'cmake' 'nasm' 'ninja' 'patchelf' 'pkgconf'
+                     'python' 'vulkan-headers')
 provides=('skwd-paper')
 conflicts=('skwd-paper')
-# Prebuilt and stripped upstream.
+# Prebuilt and stripped upstream; the aarch64 build keeps the same layout.
 options=('!strip' '!debug')
 # The upstream tag uses "-" where the asset name uses pacman's "_".
 _tag="v1.0.0-beta.23"
 _asset="skwd-paper-1.0.0_beta.23-1-x86_64.pkg.tar.zst"
-source=("$pkgname-$pkgver.pkg.tar.zst::https://github.com/liixini/skwd-wall/releases/download/$_tag/$_asset")
-# A pacman package: unpacked by hand so .PKGINFO and .MTREE never land in $pkgdir.
-noextract=("$pkgname-$pkgver.pkg.tar.zst")
-sha256sums=('e1a6aabcf3971dc639bfd1893c635e130970362ac8be3e809ffd6ac1f07dd581')
+_commit=7f9c17277a589cdd11113771b0bde0a6bb2b7d38
+_ffmpeg_version=9.0.1
+source_x86_64=("$pkgname-$pkgver.pkg.tar.zst::https://github.com/liixini/skwd-wall/releases/download/$_tag/$_asset")
+source_aarch64=("skwd-paper-$_commit.tar.gz::https://github.com/jccr/skwd-paper/archive/$_commit.tar.gz"
+                "https://ffmpeg.org/releases/ffmpeg-$_ffmpeg_version.tar.xz")
+# A pacman package is unpacked by hand so .PKGINFO and .MTREE never land in
+# $pkgdir; the FFmpeg tarball is unpacked by skwd-paper's own build script.
+noextract=("$pkgname-$pkgver.pkg.tar.zst" "ffmpeg-$_ffmpeg_version.tar.xz")
+sha256sums_x86_64=('e1a6aabcf3971dc639bfd1893c635e130970362ac8be3e809ffd6ac1f07dd581')
+sha256sums_aarch64=('d7b2449a99d2987771284d00989f3ca98e5f060b13a56b0b77bd2490c4305acf'
+                    'cf38e0e28c7e5605942c4a77755349b0145804a397af37eb1fb4c77cb237f635')
+
+prepare() {
+  [[ $CARCH == aarch64 ]] || return 0
+  cd "skwd-paper-$_commit"
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/^host: //p')"
+}
+
+build() {
+  [[ $CARCH == aarch64 ]] || return 0
+  cd "skwd-paper-$_commit"
+  mkdir -p vendor-ffmpeg
+  cp "$srcdir/ffmpeg-$_ffmpeg_version.tar.xz" vendor-ffmpeg/
+  ./packaging/build-ffmpeg-runtime.sh "$PWD/.pkg-ffmpeg"
+  export FFMPEG_DIR="$PWD/.pkg-ffmpeg"
+  export PKG_CONFIG_PATH="$FFMPEG_DIR/lib/pkgconfig"
+  cargo build --frozen --release --workspace
+}
 
 package() {
-  bsdtar -xpf "$srcdir/$pkgname-$pkgver.pkg.tar.zst" -C "$pkgdir" usr
+  if [[ $CARCH == x86_64 ]]; then
+    bsdtar -xpf "$srcdir/$pkgname-$pkgver.pkg.tar.zst" -C "$pkgdir" usr
+    return
+  fi
+  cd "skwd-paper-$_commit"
+  rm -rf .pkg-stage
+  SKWD_PAPER_BIN_DIR="$PWD/target/release" ./scripts/package-stage.sh "$PWD/.pkg-stage"
+  cp -a .pkg-stage/. "$pkgdir/"
+  install -d "$pkgdir/usr/lib/skwd-paper"
+  cp -a .pkg-ffmpeg/lib/*.so* "$pkgdir/usr/lib/skwd-paper/"
+  install -Dm644 .pkg-ffmpeg/share/licenses/ffmpeg/COPYING.LGPLv2.1 \
+    "$pkgdir/usr/share/licenses/$pkgname/ffmpeg-COPYING.LGPLv2.1"
+  install -Dm644 .pkg-ffmpeg/share/licenses/ffmpeg/LICENSE.md \
+    "$pkgdir/usr/share/licenses/$pkgname/ffmpeg-LICENSE.md"
 }
