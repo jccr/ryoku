@@ -53,6 +53,22 @@ wrapper_dir=~/.local/share/ryoku-rclone/bin
 real=$(command -v rclone)
 [[ $real != "$wrapper_dir/rclone" ]] || exit 0
 mkdir -p "$wrapper_dir"
+# sign_accept_encoding arrived after the rclone Ubuntu packages; an older one
+# still signs Accept-Encoding on every download, so a pinned release replaces it.
+if ! "$real" help backend s3 2>/dev/null | grep -q sign-accept-encoding; then
+  version=v1.75.2
+  case $(uname -m) in
+    x86_64) arch=amd64 sum=349ac8fba6ff65d6247043f1750cdcb518ec5d500ef91463a10d37c0ccdf3702 ;;
+    aarch64) arch=arm64 sum=7e1e8d69654941b7b7df84ee74c5f7fb09cce7d5496947fb7bf16b55ff427d10 ;;
+    *) echo "ryoku-r2-config: no pinned rclone for $(uname -m)" >&2; exit 1 ;;
+  esac
+  zip="$wrapper_dir/rclone-$version-linux-$arch.zip"
+  curl -fsSL -o "$zip" "https://downloads.rclone.org/$version/rclone-$version-linux-$arch.zip"
+  echo "$sum  $zip" | sha256sum -c --quiet
+  unzip -q -o -j "$zip" "rclone-$version-linux-$arch/rclone" -d "$wrapper_dir/pinned"
+  rm -f "$zip"
+  real="$wrapper_dir/pinned/rclone"
+fi
 cat > "$wrapper_dir/rclone" <<EOF
 #!/usr/bin/env bash
 exec "$real" --header "CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}" --header "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}" "\$@"
