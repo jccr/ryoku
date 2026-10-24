@@ -44,8 +44,9 @@ provides=$(
 	for db in /var/lib/pacman/sync/*.db; do
 		[[ -r $db ]] || continue
 		# Arch Linux ARM's dbs keep the older layout, %PROVIDES% in a separate
-		# depends entry beside desc, so both are read.
-		tar -xOf "$db" --wildcards '*/desc' '*/depends' 2>/dev/null |
+		# depends entry beside desc, so both are read. tar fails on the pattern
+		# a db's layout lacks after extracting the other.
+		{ tar -xOf "$db" --wildcards '*/desc' '*/depends' 2>/dev/null || :; } |
 			awk '/^%PROVIDES%$/{f=1;next} /^%/{f=0} f'
 	done | sed 's/[<>=].*//' | sort -u
 )
