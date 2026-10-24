@@ -1190,7 +1190,7 @@ if [[ $_rserves != 200 ]]; then
   fi
   say "skipping packaged externals ([ryoku] does not serve $_rarch yet)"
 elif command -v sudo >/dev/null 2>&1 && command -v pacman >/dev/null 2>&1; then
-  _rkey=EB6D3C0F55A7B3CABA6B2838847B274F025DD6E3
+  _rkey=F0F1A464B1D4CAB4BEC1BDEE681F18C0880B2188
   _rcur="$(awk '/^\[ryoku\]/{f=1;next} /^\[/{f=0} f && /^Server/{sub(/^Server *= */,""); print; exit}' /etc/pacman.conf)"
   if [[ -z "$_rcur" ]]; then
     say "adding the [ryoku] repo ($_rserver) so packaged externals install from it"
