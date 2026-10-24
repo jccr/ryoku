@@ -65,7 +65,13 @@ if ! "$real" help backend s3 2>/dev/null | grep -q sign-accept-encoding; then
   zip="$wrapper_dir/rclone-$version-linux-$arch.zip"
   curl -fsSL -o "$zip" "https://downloads.rclone.org/$version/rclone-$version-linux-$arch.zip"
   echo "$sum  $zip" | sha256sum -c --quiet
-  unzip -q -o -j "$zip" "rclone-$version-linux-$arch/rclone" -d "$wrapper_dir/pinned"
+  mkdir -p "$wrapper_dir/pinned"
+  # a pacman container has bsdtar before it has unzip
+  if command -v unzip > /dev/null; then
+    unzip -q -o -j "$zip" "rclone-$version-linux-$arch/rclone" -d "$wrapper_dir/pinned"
+  else
+    bsdtar -xf "$zip" -C "$wrapper_dir/pinned" --strip-components 1 "rclone-$version-linux-$arch/rclone"
+  fi
   rm -f "$zip"
   real="$wrapper_dir/pinned/rclone"
 fi
