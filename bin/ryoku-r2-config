@@ -3,10 +3,17 @@
 # through (the [ryoku] repo channels and the ISO), from the R2_* secrets in the
 # environment. One place for the remote's shape, used by publish-repo.yml (the
 # build and publish jobs) and build-iso-reusable.yml.
+#
+# With CF_ACCESS_CLIENT_ID and CF_ACCESS_CLIENT_SECRET set, the endpoint is an
+# S3 server (Garage) behind Cloudflare Access instead of R2. Access needs its
+# service-token headers on every request, and rclone has no per-remote header
+# option for S3 (RCLONE_HEADER carries only one), so an rclone wrapper that
+# adds them goes first on the job's PATH.
 set -euo pipefail
 : "${R2_ACCESS_KEY_ID:?}" "${R2_SECRET_ACCESS_KEY:?}" "${R2_ENDPOINT:?}"
 mkdir -p ~/.config/rclone
-cat > ~/.config/rclone/rclone.conf <<EOF
+if [[ -z ${CF_ACCESS_CLIENT_ID:-} ]]; then
+  cat > ~/.config/rclone/rclone.conf <<EOF
 [Ryoku]
 type = s3
 provider = Cloudflare
@@ -18,4 +25,38 @@ endpoint = ${R2_ENDPOINT}
 # already exists, so skip the check.
 no_check_bucket = true
 EOF
+  chmod 600 ~/.config/rclone/rclone.conf
+  exit 0
+fi
+
+: "${CF_ACCESS_CLIENT_SECRET:?}"
+cat > ~/.config/rclone/rclone.conf <<EOF
+[Ryoku]
+type = s3
+provider = Other
+access_key_id = ${R2_ACCESS_KEY_ID}
+secret_access_key = ${R2_SECRET_ACCESS_KEY}
+endpoint = ${R2_ENDPOINT}
+region = garage
+force_path_style = true
+no_check_bucket = true
+# Cloudflare refuses request bodies over 100 MB; 50M parts stay under it.
+upload_cutoff = 50M
+chunk_size = 50M
+EOF
 chmod 600 ~/.config/rclone/rclone.conf
+
+wrapper_dir=~/.local/share/ryoku-rclone/bin
+real=$(command -v rclone)
+[[ $real != "$wrapper_dir/rclone" ]] || exit 0
+mkdir -p "$wrapper_dir"
+cat > "$wrapper_dir/rclone" <<EOF
+#!/usr/bin/env bash
+exec "$real" --header "CF-Access-Client-Id: ${CF_ACCESS_CLIENT_ID}" --header "CF-Access-Client-Secret: ${CF_ACCESS_CLIENT_SECRET}" "\$@"
+EOF
+chmod 700 "$wrapper_dir/rclone"
+if [[ -n ${GITHUB_PATH:-} ]]; then
+  echo "$wrapper_dir" >> "$GITHUB_PATH"
+else
+  echo "ryoku-r2-config: put $wrapper_dir first on PATH" >&2
+fi
