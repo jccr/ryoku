@@ -2080,6 +2080,9 @@ func stepPackages(e *engine) error {
 	if d == archSource || (d.id == "arch" && e.f.machine != "x86_64") {
 		pkgs = e.dropUnresolvable(pkgs)
 	}
+	if d.id == "fedora" && e.f.machine != "x86_64" {
+		pkgs = e.dropUnavailableRPMs(pkgs)
+	}
 	if d.id == "arch" {
 		// a .part resumed against a mirror whose bytes moved on trips pacman's
 		// size cap on every retry; dropping resume state just costs a re-download.
@@ -2122,6 +2125,51 @@ func (e *engine) dropUnresolvable(pkgs []string) []string {
 		}
 	}
 	e.say(i18n.Tf("skipping %d packages this architecture's repos do not carry: %s", len(names), strings.Join(names, " ")))
+	return keep
+}
+
+// dropUnavailableRPMs is dropUnresolvable for dnf: off x86_64 the enabled
+// repositories lack some names the table maps (the .i686 multilib, a package
+// Ryoku builds for x86_64 only), and one of them fails the whole transaction.
+// A name counts as carried when a package of that name, name.arch or provide
+// is available.
+func (e *engine) dropUnavailableRPMs(pkgs []string) []string {
+	if e.dry || len(pkgs) == 0 {
+		return pkgs
+	}
+	dnf := fedoraDNFCommand()
+	out, err := exec.Command(dnf, append([]string{"repoquery", "-q", "--available", "--qf", "%{name}.%{arch}\n"}, pkgs...)...).Output()
+	if err != nil {
+		return pkgs
+	}
+	carried := map[string]bool{}
+	for _, nevra := range strings.Fields(string(out)) {
+		carried[nevra] = true
+		if dot := strings.LastIndex(nevra, "."); dot > 0 {
+			carried[nevra[:dot]] = true
+		}
+	}
+	// nothing carried means unreadable metadata, not a port missing everything
+	if len(carried) == 0 {
+		return pkgs
+	}
+	keep := make([]string, 0, len(pkgs))
+	var names []string
+	for _, pkg := range pkgs {
+		if carried[pkg] {
+			keep = append(keep, pkg)
+			continue
+		}
+		provider, _ := exec.Command(dnf, "repoquery", "-q", "--available", "--whatprovides", pkg).Output()
+		if strings.TrimSpace(string(provider)) != "" {
+			keep = append(keep, pkg)
+			continue
+		}
+		names = append(names, pkg)
+	}
+	if len(names) > 0 {
+		e.say(i18n.Tf("skipping %d packages this architecture's repos do not carry: %s", len(names), strings.Join(names, " ")))
+	}
 	return keep
 }
 
