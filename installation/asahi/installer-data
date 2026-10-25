@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# installer-data: writes the Asahi installer OS list that offers Ryoku.
+#
+#   installer-data <channel> <first-boot RPM URL> > installer_data.json
+#
+# The entry is the Asahi project's own Fedora Asahi Remix 44 Minimal entry,
+# image and partitions unchanged, with the Ryoku name and the first-boot RPM as
+# its one extra. The image still downloads from the Asahi project.
+set -euo pipefail
+
+channel=${1:?channel (stable or testing)}
+rpm_url=${2:?first-boot RPM URL}
+upstream=${RYOKU_ASAHI_UPSTREAM_DATA:-https://github.com/AsahiLinux/asahi-installer-data/raw/prod/data/installer_data.json}
+base_name='Fedora Asahi Remix 44 Minimal'
+
+name="Ryoku on $base_name"
+[[ $channel == stable ]] || name+=" ($channel)"
+
+curl -fsSL --retry 3 "$upstream" | jq --arg base "$base_name" --arg name "$name" --arg rpm "$rpm_url" '
+  [.os_list[] | select(.name == $base)] as $found
+  | if ($found | length) != 1 then error("the Asahi OS list has no single \($base) entry") else . end
+  | {os_list: [$found[0] | .name = $name | .default_os_name = "Ryoku" | .extras = [$rpm]]}'

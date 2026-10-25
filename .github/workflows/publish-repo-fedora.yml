@@ -550,6 +550,7 @@ jobs:
         run: ./bin/ryoku-r2-config
 
       - name: Publish tested bytes and rebuild the ledger
+        id: published
         env:
           CHANNEL: ${{ needs.prepare.outputs.channel }}
           FORCE_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.force_release || false }}
@@ -616,6 +617,26 @@ jobs:
           }
           rclone copyto fedora/releases "$REMOTE/fedora/releases" -P
           echo "::notice::Published Fedora ${{ matrix.release }} $CHANNEL release $RELEASE"
+          printf 'frozen=%s\n' "${frozen#"$REMOTE/"}" >> "$GITHUB_OUTPUT"
+
+      # The Asahi installer offers Ryoku as Fedora Asahi Remix 44 Minimal plus
+      # the first-boot RPM from this release's frozen repository.
+      - name: Publish the Asahi installer OS list
+        if: matrix.release == '44' && matrix.arch == 'aarch64'
+        env:
+          CHANNEL: ${{ needs.prepare.outputs.channel }}
+          FROZEN: ${{ steps.published.outputs.frozen }}
+          PUBLIC_BASE: https://repo.ryoku.dev/stable
+          REMOTE: Ryoku:${{ secrets.R2_BUCKET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          rpms=("$RUNNER_TEMP/fedora-repo-artifact/aarch64"/ryoku-asahi-firstboot-*.rpm)
+          ((${#rpms[@]} == 1)) || { echo '::error::Expected one ryoku-asahi-firstboot RPM'; exit 1; }
+          installation/asahi/installer-data "$CHANNEL" "$PUBLIC_BASE/$FROZEN/${rpms[0]##*/}" > "$RUNNER_TEMP/installer_data.json"
+          rclone copyto "$RUNNER_TEMP/installer_data.json" "$REMOTE/asahi/$CHANNEL/installer_data.json" -P
+          rclone copyto installation/asahi/bootstrap.sh "$REMOTE/asahi/bootstrap.sh" -P
 
       - name: Mark the channel build as published
         env:

@@ -7,6 +7,10 @@
   tty1 service, session and backend that take over from `initial-setup` on
   Fedora Asahi Remix: system settings, the planned accounts and the desktop
   through `ryoku-shell-install` (`asahi/`, `tests/asahi-firstboot-dryrun.sh`).
+- **The Asahi installer can offer Ryoku.** `asahi/bootstrap.sh` runs the Asahi
+  project's pinned, checked installer against Ryoku's OS list, which
+  `asahi/installer-data` builds from the official Fedora Asahi Remix 44 Minimal
+  entry plus the first-boot RPM; the Fedora publish workflow uploads both.
 - **The installer TUI can finish a system that is already installed.** Its
   `asahi` variant skips the hardware, disk and encryption steps, offers the
   Fedora edition's choices, and hands the keyboard, locale, time zone,
