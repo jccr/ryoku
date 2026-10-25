@@ -233,6 +233,10 @@ for spec in "$SPECS"/*.spec; do
 done
 ((spec_count > 0)) || fail "no RPM specs found under $SPECS"
 
+# Delivered outside the desktop set: the Asahi installer hands it to a Mac's
+# first boot as an extra (installation/asahi/).
+standalone_rpms=(ryoku-asahi-firstboot)
+for pkg in "${standalone_rpms[@]}"; do spec_refs[$pkg]=1; done
 for pkg in "${!spec_names[@]}"; do
 	[[ -n ${mapped_rpms[$pkg]:-}${spec_refs[$pkg]:-} ]] \
 		|| fail "RPM spec is not referenced by the translation table or another RPM: $pkg"

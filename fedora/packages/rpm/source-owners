@@ -12,3 +12,4 @@ ryoku/i18n/catalog ryoku-desktop
 .rpm-imgborders imgborders
 .rpm-hyprland-preview-share-picker hyprland-preview-share-picker
 ryoku-shell-installer/ryoku-shell-install -
+ryoku-shell-installer/ryoku-shell-install-aarch64 ryoku-asahi-firstboot
