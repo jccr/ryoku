@@ -29,6 +29,9 @@ import (
 const (
 	variantVoid    = "void"
 	variantCachyOS = "cachyos"
+	// The Asahi installer lays down Fedora Asahi Remix before this runs, so the
+	// wizard finishes an installed system instead of installing one.
+	variantAsahi = "asahi"
 )
 
 var variantMarkerPath = "/usr/share/ryoku/variant"
@@ -47,6 +50,12 @@ func sysVariant() string {
 
 func isVoidVariant(variant string) bool {
 	return variant == variantVoid
+}
+
+// isPreinstalledVariant reports a variant whose system is already on disk: no
+// disk, firmware or encryption steps, and the backend sets up the running root.
+func isPreinstalledVariant(variant string) bool {
+	return variant == variantAsahi
 }
 
 // run executes a command and returns its trimmed stdout, plus whether it worked.
@@ -1373,8 +1382,11 @@ func killBackend(cmd *exec.Cmd) {
 }
 
 // stepIndex maps a backend @@RYOKU_STEP id to an install row.
-func stepIndex(id string) (int, bool) {
+func stepIndex(variant, id string) (int, bool) {
 	order := []string{"partition", "filesystems", "mount", "pacstrap", "configure", "bootloader"}
+	if isPreinstalledVariant(variant) {
+		order = []string{"system", "accounts", "desktop", "finish"}
+	}
 	for i, s := range order {
 		if s == id {
 			return i, true
@@ -1439,6 +1451,7 @@ func (m *model) startInstall() tea.Cmd {
 		st.ch <- installDoneMsg{err} // buffered channel: never blocks
 		return st.wait()
 	}
+	variant := m.variant
 	go func() {
 		done := make(chan error, 1)
 		go func() { done <- cmd.Wait(); pw.Close(); close(st.procDone) }()
@@ -1447,7 +1460,7 @@ func (m *model) startInstall() tea.Cmd {
 		for sc.Scan() {
 			line := sc.Text()
 			if id, ok := strings.CutPrefix(line, "@@RYOKU_STEP "); ok {
-				if idx, ok := stepIndex(strings.TrimSpace(id)); ok {
+				if idx, ok := stepIndex(variant, strings.TrimSpace(id)); ok {
 					st.ch <- installStepMsg(idx)
 					continue
 				}
