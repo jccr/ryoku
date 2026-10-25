@@ -90,7 +90,7 @@ vendor_ryoku_go_modules() {
   ((tree_go_vendored == 0)) || return 0
   while IFS= read -r -d '' gomod; do
     (cd "${gomod%/go.mod}" && GOTOOLCHAIN=local go mod vendor)
-  done < <(find "$tree/ryoku" -name vendor -prune -o -name go.mod -print0)
+  done < <(find "$tree/ryoku" "$tree/installation/tui" -name vendor -prune -o -name go.mod -print0)
   tree_go_vendored=1
   return 0
 }
