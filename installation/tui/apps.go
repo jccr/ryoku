@@ -24,17 +24,23 @@ func flowIndex(flow []step, key string) int {
 	return -1
 }
 
+// editionTables names the edition whose package translation table a variant
+// reads; a variant absent here installs Arch's own names.
+var editionTables = map[string]string{variantVoid: "void", variantAsahi: "fedora"}
+
 func installerChoicesForVariant(variant string) installerplan.EditionPlan {
-	if !isVoidVariant(variant) {
+	edition, ok := editionTables[variant]
+	if !ok {
 		return installerplan.ResolveSource(variant)
 	}
+	table := filepath.Join(edition, "packages", "translations.tsv")
 	var paths []string
 	if root := os.Getenv("RYOKU_REPO"); root != "" {
-		paths = append(paths, filepath.Join(root, "void/packages/translations.tsv"))
+		paths = append(paths, filepath.Join(root, table))
 	}
 	paths = append(paths,
-		"/usr/share/ryoku/void/packages/translations.tsv",
-		filepath.Join("..", "..", "void", "packages", "translations.tsv"),
+		filepath.Join("/usr/share/ryoku", table),
+		filepath.Join("..", "..", table),
 	)
 	for _, path := range paths {
 		data, err := os.ReadFile(path)
@@ -47,7 +53,7 @@ func installerChoicesForVariant(variant string) installerplan.EditionPlan {
 		}
 		return plan
 	}
-	panic(fmt.Sprintf("Void package table not found in %s", strings.Join(paths, ", ")))
+	panic(fmt.Sprintf("%s package table not found in %s", edition, strings.Join(paths, ", ")))
 }
 
 func choiceItems(kind string, plan installerplan.EditionPlan, availableOnly bool) []item {

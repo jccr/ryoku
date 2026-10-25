@@ -590,6 +590,9 @@ func stepsForVariant(variant string) []step {
 		copy(all[index+1:], all[index:])
 		all[index] = gaming
 	}
+	if isPreinstalledVariant(variant) {
+		all = withoutSteps(all, preinstalledSkips)
+	}
 	// On the graphical relaunch (keymapRelaunch), the keyboard layout is already
 	// chosen and cage runs under it; drop the step so the wizard resumes at locale,
 	// with the password captured in the user's real layout.
@@ -600,6 +603,24 @@ func stepsForVariant(variant string) []step {
 		all = append([]step{notice}, all...)
 	}
 	return all
+}
+
+// preinstalledSkips are the steps an installed system has already answered: the
+// hardware, disk and encryption choices belong to the installer that laid it
+// down. Apps & tools stays out until the shell installer can drop single apps.
+var preinstalledSkips = map[string]bool{
+	"hardware": true, "profile": true, "gpu": true, "apps": true,
+	"diskpick": true, "disk": true, "partitions": true, "encryption": true,
+}
+
+func withoutSteps(all []step, skip map[string]bool) []step {
+	kept := all[:0]
+	for _, s := range all {
+		if !skip[s.key] {
+			kept = append(kept, s)
+		}
+	}
+	return kept
 }
 
 func gamingStep(variant, title string) step {
@@ -1045,7 +1066,13 @@ var spinFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧"
 // installSteps names the backend's install phases for the progress panel. It is
 // a function, not a package-level var, so the names resolve in the language
 // main() picked (a var initializer would run before i18n.Use).
-func installSteps() []string {
+func installSteps(variant string) []string {
+	if isPreinstalledVariant(variant) {
+		return []string{
+			i18n.T("Setting up the system"), i18n.T("Creating the accounts"),
+			i18n.T("Installing the Ryoku desktop"), i18n.T("Finishing up"),
+		}
+	}
 	return []string{
 		i18n.T("Partitioning the disk"), i18n.T("Creating filesystems and btrfs subvolumes"),
 		i18n.T("Mounting the target"), i18n.T("Installing the base system"),
@@ -1298,7 +1325,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.sAnim, m.sVel = m.sSpr.Update(m.sAnim, m.sVel, tgt)
 			}
 		case "install":
-			m.progress, m.progVel = m.progSpr.Update(m.progress, m.progVel, float64(m.installAt)/float64(len(installSteps())))
+			m.progress, m.progVel = m.progSpr.Update(m.progress, m.progVel, float64(m.installAt)/float64(len(installSteps(m.variant))))
 		}
 		return m, m.tickCmd()
 	case installStepMsg:
@@ -1315,10 +1342,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case installDoneMsg:
 		if msg.err != nil {
-			phases := installSteps()
+			phases := installSteps(m.variant)
 			m.failInstall(phases[clamp(m.installAt, 0, len(phases)-1)])
 		} else {
-			m.installAt, m.progress, m.state = len(installSteps()), 1, "done"
+			m.installAt, m.progress, m.state = len(installSteps(m.variant)), 1, "done"
 		}
 		return m, nil
 	case tea.KeyPressMsg:
@@ -2820,6 +2847,9 @@ func (m model) welcomeFrame() string {
 	if isVoidVariant(m.variant) {
 		liveImageLine = i18n.T("the live Void image now, and this installer turns it into")
 	}
+	if isPreinstalledVariant(m.variant) {
+		liveImageLine = i18n.T("Fedora Asahi Remix now, and this installer turns it into")
+	}
 	card := sty().Border(border()).BorderForeground(cBlue).Padding(1, 3).Render(
 		bold(cBrand, i18n.T("Thank you for installing Ryoku")) + "\n\n" +
 			fg(cText, i18n.T("There is no try-before-you-install demo. You are running")) + "\n" +
@@ -3584,17 +3614,27 @@ func (m model) reviewBody(w int) string {
 	if def(m.picks["rashin"], "1") != "1" {
 		rashin = i18n.T("No")
 	}
-	lines := []string{
-		bold(cBrand, i18n.T("Review, then confirm to install")), "",
-		fg(cRed, i18n.Tf("⚠ this writes the layout below to %s", m.diskDev)), "",
+	preinstalled := isPreinstalledVariant(m.variant)
+	lines := []string{bold(cBrand, i18n.T("Review, then confirm to install")), ""}
+	if preinstalled {
+		lines = append(lines, fg(cYell, i18n.T("⚠ this sets up Ryoku and the accounts below on this system")), "")
+	} else {
+		lines = append(lines, fg(cRed, i18n.Tf("⚠ this writes the layout below to %s", m.diskDev)), "")
+	}
+	lines = append(lines,
 		row(i18n.T("keyboard"), m.picks["keyboard"]), row(i18n.T("locale"), m.picks["locale"]),
-		row(i18n.T("time zone"), m.picks["timezone"]), row(i18n.T("profile"), m.picks["profile"]),
-		row(i18n.T("firmware"), firmware),
+		row(i18n.T("time zone"), m.picks["timezone"]))
+	if !preinstalled {
+		lines = append(lines, row(i18n.T("profile"), m.picks["profile"]), row(i18n.T("firmware"), firmware))
+	}
+	lines = append(lines,
 		row(i18n.T("wm"), compositorLabel(m.picks["compositor"])), row(i18n.T("browser"), browserLabel(m.picks["browser"])),
 		row(i18n.T("shell"), loginShellLabel(m.picks["login-shell"])),
 		row(i18n.T("files"), fileManagerLabel(m.picks["file-manager"])),
 		row(i18n.T("Rashin"), rashin),
-		row(i18n.T("apps"), m.appsReviewCell()),
+	)
+	if !preinstalled {
+		lines = append(lines, row(i18n.T("apps"), m.appsReviewCell()))
 	}
 	if flowIndex(m.flow, "gaming") >= 0 {
 		gaming := i18n.T("No")
@@ -3603,9 +3643,12 @@ func (m model) reviewBody(w int) string {
 		}
 		lines = append(lines, row(i18n.T("Gaming"), gaming))
 	}
+	if !preinstalled {
+		lines = append(lines,
+			row(i18n.T("disk"), m.diskDev),
+			fg(cSub, fmt.Sprintf("%-11s", i18n.T("strategy")))+stratCell)
+	}
 	lines = append(lines,
-		row(i18n.T("disk"), m.diskDev),
-		fg(cSub, fmt.Sprintf("%-11s", i18n.T("strategy")))+stratCell,
 		row(i18n.T("hostname"), m.picks["hostname"]),
 		row(i18n.T("admin"), accountReviewName(m.picks["username"], m.accounts.adminFullName)),
 		row(i18n.T("root"), rootReviewLabel(m.accounts.rootMode)),
@@ -3613,11 +3656,13 @@ func (m model) reviewBody(w int) string {
 	for _, person := range m.accounts.people {
 		lines = append(lines, row(i18n.T("person"), accountReviewName(person.Name, person.FullName)+" · "+roleLabel(person.Role)))
 	}
-	lines = append(lines,
-		row(i18n.T("encryption"), m.picks["encryption"]), "",
-		fg(cSub, i18n.T("layout     "))+fg(cText, i18n.Tf("%s %s · root %dG · swap %s", bootKind, esp, m.availRoot()-m.swapG, swap)),
-		fg(cSub, i18n.T("subvols    "))+fg(cText, subs),
-	)
+	if !preinstalled {
+		lines = append(lines,
+			row(i18n.T("encryption"), m.picks["encryption"]), "",
+			fg(cSub, i18n.T("layout     "))+fg(cText, i18n.Tf("%s %s · root %dG · swap %s", bootKind, esp, m.availRoot()-m.swapG, swap)),
+			fg(cSub, i18n.T("subvols    "))+fg(cText, subs),
+		)
+	}
 	if len(m.kept) > 0 {
 		lines = append(lines, fg(cSub, i18n.T("kept       "))+fg(cYell, i18n.Tf("%d existing partition(s)", len(m.kept))))
 	}
@@ -3751,7 +3796,7 @@ func (m model) viewCentered() string {
 	var b strings.Builder
 	b.WriteString(bold(cBrand, i18n.T("Installing Ryoku")) + "\n\n")
 	b.WriteString(bar + "\n\n")
-	names := installSteps()
+	names := installSteps(m.variant)
 	for i := range names {
 		switch {
 		case i < m.installAt:

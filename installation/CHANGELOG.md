@@ -3,6 +3,11 @@
 ## Unreleased
 
 ### Added
+- **The installer TUI can finish a system that is already installed.** Its
+  `asahi` variant skips the hardware, disk and encryption steps, offers the
+  Fedora edition's choices, and hands the keyboard, locale, time zone,
+  hostname, accounts and desktop choices to a first-boot backend
+  (`tui/main.go`, `tui/system.go`, `tui/apps.go`).
 - **The Arch, CachyOS and Void ISOs have one edition-appropriate Gaming
   question.** It sits after Rashin, defaults to No, and is absent on Fedora.
   Arch offers the network-only, x86-64-v3 **Gaming with CachyOS** set and
