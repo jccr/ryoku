@@ -626,7 +626,7 @@ jobs:
         env:
           CHANNEL: ${{ needs.prepare.outputs.channel }}
           FROZEN: ${{ steps.published.outputs.frozen }}
-          PUBLIC_BASE: https://repo.ryoku.dev/stable
+          PUBLIC_BASE: https://ryoku-repo.jccr.dev/stable
           REMOTE: Ryoku:${{ secrets.R2_BUCKET }}
         shell: bash
         run: |

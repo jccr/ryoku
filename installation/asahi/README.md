@@ -48,7 +48,7 @@ frozen repository, and uploads `asahi/bootstrap.sh` beside it. A Mac then
 installs with:
 
 ```sh
-curl -fsSL https://repo.ryoku.dev/stable/asahi/bootstrap.sh | RYOKU_CHANNEL=testing sh
+curl -fsSL https://ryoku-repo.jccr.dev/stable/asahi/bootstrap.sh | RYOKU_CHANNEL=testing sh
 ```
 
 To review it first, download `bootstrap.sh`, read it, then run `sh bootstrap.sh`.
