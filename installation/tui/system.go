@@ -1274,6 +1274,9 @@ func (m model) installEnvChecked() ([]string, error) {
 	if len(drop) > 0 {
 		env = append(env, "RYOKU_DROP_PACKAGES="+strings.Join(drop, ","))
 	}
+	if isPreinstalledVariant(m.variant) {
+		env = append(env, "RYOKU_WITHOUT="+strings.Join(m.withoutComponents(), ","))
+	}
 	if m.picks["gpu"] != "" {
 		env = append(env, "RYOKU_GPU_MODE="+m.picks["gpu"])
 	}

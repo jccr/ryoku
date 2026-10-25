@@ -8,7 +8,8 @@
 # hostname of the running system, creates the planned accounts with the ISO
 # backends' lib/accounts.sh, and installs the desktop with ryoku-shell-install
 # as the administrator. Answers arrive in the RYOKU_* environment documented in
-# installation/backend/README.md.
+# installation/backend/README.md; RYOKU_WITHOUT carries the unticked Apps &
+# tools rows as component IDs.
 #
 # progress sentinels to the TUI:
 #   @@RYOKU_STEP <id>   system, accounts, desktop, finish
@@ -87,7 +88,7 @@ firstboot_desktop() {
     /usr/libexec/ryoku-asahi/ryoku-shell-install --yes --ref "$ref" \
     --compositor "$RYOKU_COMPOSITOR" --browser "$RYOKU_BROWSER" \
     --shell "$RYOKU_LOGIN_SHELL" --file-manager "$RYOKU_FILE_MANAGER" \
-    --rashin="$rashin"
+    --rashin="$rashin" --without "${RYOKU_WITHOUT:-}"
 }
 
 firstboot_finish() {

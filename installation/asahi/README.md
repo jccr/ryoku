@@ -17,11 +17,13 @@ conditions that retired the Fedora ISO.
 3. Its `%post` disables `initial-setup` and starts `ryoku-firstboot.service`,
    which runs `ryoku-firstboot-session` on tty1.
 4. The session starts `ryoku-tui` in its `asahi` variant on the kernel console:
-   keyboard, locale, time zone, network, desktop choices, hostname and the
-   accounts, then Review (`installation/tui/README.md`).
+   keyboard, locale, time zone, network, desktop choices, Apps & tools,
+   hostname and the accounts, then Review (`installation/tui/README.md`).
 5. The wizard hands its answers to `ryoku-firstboot-install`, which sets the
    running system up and installs the desktop with `ryoku-shell-install` as the
-   administrator, from the branch in `/usr/share/ryoku-asahi/ref`.
+   administrator, from the branch in `/usr/share/ryoku-asahi/ref`. Unticked
+   apps reach it as `--without`, so it leaves them out, records them for the
+   doctor and hides them, as an ISO install does.
 6. Setup disables the service and the wizard reboots into SDDM.
 
 Leaving the wizard before setup finishes brings it back: until then the Mac has
@@ -59,7 +61,6 @@ stages every library it sources.
 
 - The wizard runs on the console, not in `cage`: the extras install before the
   network is up, so the package needs nothing Minimal lacks.
-- Apps & tools is left out until the shell installer can remove single apps.
 - The OS list is rebuilt each publish, so the bootstrap cannot pin its checksum;
   the installer it runs is pinned.
 - `initial-setup` may already be on tty1 when the extras land; the service

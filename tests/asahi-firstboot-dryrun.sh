@@ -26,7 +26,7 @@ out=$(env -i PATH="$PATH" HOME="$tmp" \
   RYOKU_LOCALE=de_DE.UTF-8 RYOKU_TIMEZONE=Europe/Berlin RYOKU_HOSTNAME=mac \
   RYOKU_USERNAME=ada RYOKU_FULLNAME='Ada L' RYOKU_PASSWORD_HASH="$hash" \
   RYOKU_COMPOSITOR=hyprland RYOKU_BROWSER=firefox RYOKU_LOGIN_SHELL=fish \
-  RYOKU_FILE_MANAGER=nautilus RYOKU_RASHIN=0 \
+  RYOKU_FILE_MANAGER=nautilus RYOKU_RASHIN=0 RYOKU_WITHOUT=voxtype,ryotunes \
   bash "$backend") || fail "backend exited non-zero:
 $out"
 
@@ -45,7 +45,7 @@ expect=(
   '@@RYOKU_STEP desktop'
   'DRYRUN: write /etc/sudoers.d/90-ryoku-firstboot:'
   'DRYRUN: loginctl enable-linger ada'
-  '/usr/libexec/ryoku-asahi/ryoku-shell-install --yes --ref unstable-dev --compositor hyprland --browser firefox --shell fish --file-manager nautilus --rashin=false'
+  '/usr/libexec/ryoku-asahi/ryoku-shell-install --yes --ref unstable-dev --compositor hyprland --browser firefox --shell fish --file-manager nautilus --rashin=false --without voxtype,ryotunes'
   '@@RYOKU_STEP finish'
   'DRYRUN: loginctl disable-linger ada'
   'DRYRUN: rm -f /etc/sudoers.d/90-ryoku-firstboot'

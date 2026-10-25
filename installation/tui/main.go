@@ -607,9 +607,9 @@ func stepsForVariant(variant string) []step {
 
 // preinstalledSkips are the steps an installed system has already answered: the
 // hardware, disk and encryption choices belong to the installer that laid it
-// down. Apps & tools stays out until the shell installer can drop single apps.
+// down.
 var preinstalledSkips = map[string]bool{
-	"hardware": true, "profile": true, "gpu": true, "apps": true,
+	"hardware": true, "profile": true, "gpu": true,
 	"diskpick": true, "disk": true, "partitions": true, "encryption": true,
 }
 
@@ -3632,10 +3632,8 @@ func (m model) reviewBody(w int) string {
 		row(i18n.T("shell"), loginShellLabel(m.picks["login-shell"])),
 		row(i18n.T("files"), fileManagerLabel(m.picks["file-manager"])),
 		row(i18n.T("Rashin"), rashin),
+		row(i18n.T("apps"), m.appsReviewCell()),
 	)
-	if !preinstalled {
-		lines = append(lines, row(i18n.T("apps"), m.appsReviewCell()))
-	}
 	if flowIndex(m.flow, "gaming") >= 0 {
 		gaming := i18n.T("No")
 		if m.picks["gaming"] == "1" {
