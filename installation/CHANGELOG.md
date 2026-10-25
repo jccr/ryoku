@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Added
+- **A Mac can finish its Ryoku setup on first boot.** `asahi/` holds the
+  tty1 service, session and backend that take over from `initial-setup` on
+  Fedora Asahi Remix: system settings, the planned accounts and the desktop
+  through `ryoku-shell-install` (`asahi/`, `tests/asahi-firstboot-dryrun.sh`).
 - **The installer TUI can finish a system that is already installed.** Its
   `asahi` variant skips the hardware, disk and encryption steps, offers the
   Fedora edition's choices, and hands the keyboard, locale, time zone,

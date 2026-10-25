@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# ryoku-firstboot-session: the Ryoku installer on the first boot of a Mac.
+#
+# ryoku-firstboot.service runs this on tty1 in place of Fedora's initial-setup.
+# The extras that bring it arrive before the network does, so the wizard runs on
+# the kernel console (the ISO session's no-GPU path) rather than in cage.
+
+export RYOKU_REPO=/usr/share/ryoku
+export RYOKU_BACKEND=/usr/libexec/ryoku-asahi/ryoku-firstboot-install
+export RYOKU_SESSION=console
+
+/usr/libexec/ryoku-asahi/ryoku-tui
+# The backend disables the service once setup is done. Until then this machine
+# has no account to log in with, so leaving the wizard fails the unit and
+# systemd brings it back.
+! systemctl -q is-enabled ryoku-firstboot.service

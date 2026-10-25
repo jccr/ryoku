@@ -120,14 +120,14 @@ ryoku_resolve_timezone() {
     else
       for url in "https://ipinfo.io/timezone" "http://ip-api.com/line?fields=timezone"; do
         timezone=$(curl -fsSL --max-time 10 "$url" 2>/dev/null | tr -d '[:space:]') || timezone=
-        if [[ -n $timezone && -e /mnt/usr/share/zoneinfo/$timezone ]]; then
+        if [[ -n $timezone && -e ${RYOKU_TARGET_ROOT:-/mnt}/usr/share/zoneinfo/$timezone ]]; then
           break
         fi
         timezone=
       done
     fi
   fi
-  if [[ -z ${RYOKU_DRYRUN:-} && ( -z $timezone || ! -e /mnt/usr/share/zoneinfo/$timezone ) ]]; then
+  if [[ -z ${RYOKU_DRYRUN:-} && ( -z $timezone || ! -e ${RYOKU_TARGET_ROOT:-/mnt}/usr/share/zoneinfo/$timezone ) ]]; then
     log 'warn: timezone '\''%s'\'' is empty or unknown; falling back to UTC' "${timezone:-empty}"
     timezone=UTC
   fi

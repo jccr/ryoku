@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# shellcheck source-path=SCRIPTDIR
+#
+# ryoku-firstboot-install: the backend ryoku-tui hands its answers to on a Mac.
+#
+# The Asahi installer has already laid Fedora Asahi Remix on the disk, so there
+# is nothing to partition: this sets the keyboard, locale, time zone and
+# hostname of the running system, creates the planned accounts with the ISO
+# backends' lib/accounts.sh, and installs the desktop with ryoku-shell-install
+# as the administrator. Answers arrive in the RYOKU_* environment documented in
+# installation/backend/README.md.
+#
+# progress sentinels to the TUI:
+#   @@RYOKU_STEP <id>   system, accounts, desktop, finish
+#   @@RYOKU_DONE        printed once after the final stage succeeds
+#
+# RYOKU_DRYRUN=1 prints every system change instead of making it.
+
+set -euo pipefail
+
+: "${RYOKU_ASAHI_SHARE:=/usr/share/ryoku-asahi}"
+: "${RYOKU_BACKEND_LIB:=/usr/share/ryoku/installation/backend/lib}"
+: "${RYOKU_DRYRUN:=}"
+: "${RYOKU_HOSTNAME:=ryoku}"
+: "${RYOKU_KEYMAP:=us}"
+: "${RYOKU_LOCALE:=en_US.UTF-8}"
+: "${RYOKU_TIMEZONE:=UTC}"
+: "${RYOKU_LOGIN_SHELL:=bash}"
+: "${RYOKU_RASHIN:=1}"
+export RYOKU_TARGET_ROOT=/ RYOKU_TARGET_CHROOT=chroot
+
+# shellcheck source=../backend/lib/common.sh
+source "$RYOKU_BACKEND_LIB/common.sh"
+# shellcheck source=../backend/lib/accounts.sh
+source "$RYOKU_BACKEND_LIB/accounts.sh"
+
+sudoers=/etc/sudoers.d/90-ryoku-firstboot
+
+firstboot_system() {
+  step system
+  local xkbl=${RYOKU_XKB_LAYOUT:-$RYOKU_KEYMAP} xkbv=${RYOKU_XKB_VARIANT:-}
+  log 'keyboard: %s (%s%s)' "$RYOKU_KEYMAP" "$xkbl" "${xkbv:+ $xkbv}"
+  run localectl set-keymap "$RYOKU_KEYMAP"
+  run localectl set-x11-keymap "$xkbl" "" "$xkbv"
+  # Fedora ships each language's locale data in its own langpack.
+  log 'locale: %s' "$RYOKU_LOCALE"
+  run dnf -y install "glibc-langpack-${RYOKU_LOCALE%%_*}"
+  run localectl set-locale "LANG=$RYOKU_LOCALE"
+  ryoku_resolve_timezone "$RYOKU_TIMEZONE"
+  log 'timezone: %s' "$RYOKU_RESOLVED_TIMEZONE"
+  run timedatectl set-timezone "$RYOKU_RESOLVED_TIMEZONE"
+  log 'hostname: %s' "$RYOKU_HOSTNAME"
+  run hostnamectl set-hostname "$RYOKU_HOSTNAME"
+}
+
+firstboot_accounts() {
+  step accounts
+  # The accounts are created with their login shell, so it lands first.
+  run dnf -y install "$RYOKU_LOGIN_SHELL"
+  ryoku_accounts_create
+}
+
+# The shell installer runs as the administrator and asks sudo for root, with no
+# one to type a password and no login session: a lingering user manager stands
+# in for the session, and a sudoers drop-in that lives only for this run lets
+# its sudo through.
+firstboot_desktop() {
+  step desktop
+  local user=$RYOKU_USERNAME uid ref rashin=false
+  ref=$(cat "$RYOKU_ASAHI_SHARE/ref")
+  [[ $RYOKU_RASHIN == 1 ]] && rashin=true
+  printf '%s ALL=(ALL) NOPASSWD: ALL\n' "$user" | write_file "$sudoers"
+  run chmod 0440 "$sudoers"
+  run loginctl enable-linger "$user"
+  if [[ -z $RYOKU_DRYRUN ]]; then
+    uid=$(id -u "$user")
+    for _ in $(seq 50); do
+      [[ -S /run/user/$uid/bus ]] && break
+      sleep 0.2
+    done
+  else
+    uid=1000
+  fi
+  log 'desktop: %s from %s' "$RYOKU_COMPOSITOR" "$ref"
+  run runuser -u "$user" -- env HOME="/home/$user" XDG_RUNTIME_DIR="/run/user/$uid" \
+    DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" RYOKU_ASCII=1 \
+    /usr/libexec/ryoku-asahi/ryoku-shell-install --yes --ref "$ref" \
+    --compositor "$RYOKU_COMPOSITOR" --browser "$RYOKU_BROWSER" \
+    --shell "$RYOKU_LOGIN_SHELL" --file-manager "$RYOKU_FILE_MANAGER" \
+    --rashin="$rashin"
+}
+
+firstboot_finish() {
+  step finish
+  run loginctl disable-linger "$RYOKU_USERNAME"
+  run rm -f "$sudoers"
+  run systemctl disable ryoku-firstboot.service
+  run systemctl set-default graphical.target
+}
+
+# A failed run keeps the first-boot service, so the next boot offers the wizard
+# again, but never leaves the passwordless sudo rule behind.
+cleanup() {
+  [[ -n $RYOKU_DRYRUN ]] || rm -f "$sudoers"
+}
+trap cleanup EXIT
+
+firstboot_system
+firstboot_accounts
+firstboot_desktop
+firstboot_finish
+printf '@@RYOKU_DONE\n'
+log 'setup complete'

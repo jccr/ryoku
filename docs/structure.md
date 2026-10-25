@@ -233,6 +233,11 @@ System-level definition installed into the target.
   prebuilds the Go binaries, and runs `mkarchiso` (reproducible for a fixed
   commit). `profiledef.sh`, `packages.x86_64` (live-only set), and `airootfs/`
   complete the live image.
+- `asahi/` the first boot of an Apple Silicon Mac. The Asahi installer lays down
+  Fedora Asahi Remix and its first boot installs the `ryoku-asahi-firstboot`
+  RPM, which runs `tui/` in its preinstalled mode on tty1 and hands the answers
+  to `ryoku-firstboot-install`: system settings, the accounts through
+  `backend/lib/accounts.sh`, then `ryoku-shell-install` for the desktop.
 - `tests/` install verification: `container-install.sh` (packaged install in a
   container), `install-vm.py` (real unattended install in QEMU), and
   `iso-stage-check.sh` (the staged ISO tree is byte-reproducible).

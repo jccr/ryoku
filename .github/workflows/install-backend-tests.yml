@@ -42,6 +42,8 @@ on:
       - 'tests/install-dryrun-harness.sh'
       - 'tests/install-edition-parity.sh'
       - 'tests/install-void-dryrun-matrix.sh'
+      - 'tests/asahi-firstboot-dryrun.sh'
+      - 'installation/asahi/**'
       - 'void/iso/backend/**'
       - 'tests/install-offline.sh'
       - 'tests/install-hooks.sh'
@@ -95,6 +97,8 @@ on:
       - 'tests/install-dryrun-harness.sh'
       - 'tests/install-edition-parity.sh'
       - 'tests/install-void-dryrun-matrix.sh'
+      - 'tests/asahi-firstboot-dryrun.sh'
+      - 'installation/asahi/**'
       - 'void/iso/backend/**'
       - 'tests/install-offline.sh'
       - 'tests/install-hooks.sh'
@@ -168,6 +172,10 @@ jobs:
       - name: Arch and Void installs reach the same first boot
         shell: bash
         run: bash tests/install-edition-parity.sh
+
+      - name: Asahi first boot sets up the running system
+        shell: bash
+        run: bash tests/asahi-firstboot-dryrun.sh
 
 
       - name: Offline install path (no network, baked repo, refusals before the wipe)
