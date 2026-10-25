@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- `accounts`: **the account plan can land on a running system.**
+  `RYOKU_TARGET_ROOT` (default `/mnt`) names the root it writes, so the
+  Asahi first-boot backend creates the same accounts with `chroot /`.
 - `lanes`/`dracut`: **profile lanes and the dracut cmdline are shared.** The
   helpers moved out of the Void backend without changing its dry-run output.
   `filesystem` gained the shared fstab subvolume and target API-mount helpers,

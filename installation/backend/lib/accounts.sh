@@ -6,6 +6,10 @@
 : "${RYOKU_ROOT_PASSWORD_HASH:=}"
 : "${RYOKU_EXTRA_USERS_FILE:=}"
 : "${RYOKU_HOME_LIMIT_BYTES:=0}"
+# The system the accounts land in: the mounted install, or / on a system that
+# is already installed (with RYOKU_TARGET_CHROOT=chroot).
+: "${RYOKU_TARGET_ROOT:=/mnt}"
+: "${RYOKU_TARGET_CHROOT:=arch-chroot}"
 
 declare -ga RYOKU_ACCOUNT_NAMES=()
 declare -ga RYOKU_ACCOUNT_FULL_NAMES=()
@@ -69,19 +73,19 @@ ryoku_account_validate_permissions() {
 
 ryoku_account_target_has_name() {
   local wanted=$1 name _
-  [[ -r /mnt/etc/passwd ]] || return 1
+  [[ -r "${RYOKU_TARGET_ROOT%/}/etc/passwd" ]] || return 1
   while IFS=: read -r name _; do
     [[ $name != "$wanted" ]] || return 0
-  done </mnt/etc/passwd
+  done <"${RYOKU_TARGET_ROOT%/}/etc/passwd"
   return 1
 }
 
 ryoku_account_target_has_group_name() {
   local wanted=$1 group _
-  [[ -r /mnt/etc/group ]] || return 1
+  [[ -r "${RYOKU_TARGET_ROOT%/}/etc/group" ]] || return 1
   while IFS=: read -r group _; do
     [[ $group != "$wanted" ]] || return 0
-  done </mnt/etc/group
+  done <"${RYOKU_TARGET_ROOT%/}/etc/group"
   return 1
 }
 
@@ -164,10 +168,10 @@ ryoku_accounts_validate() {
 ryoku_account_target_group_exists() {
   local wanted=$1 group _
   [[ -n ${RYOKU_DRYRUN:-} ]] && return 0
-  [[ -r /mnt/etc/group ]] || return 1
+  [[ -r "${RYOKU_TARGET_ROOT%/}/etc/group" ]] || return 1
   while IFS=: read -r group _; do
     [[ $group != "$wanted" ]] || return 0
-  done </mnt/etc/group
+  done <"${RYOKU_TARGET_ROOT%/}/etc/group"
   return 1
 }
 
@@ -226,44 +230,44 @@ ryoku_account_create_one() {
   useradd_args+=("$name")
 
   log 'account: %s (%s; groups %s; shell %s)' "$name" "$role" "$groups_csv" "$login_shell"
-  run btrfs subvolume create "/mnt/home/$name"
-  run "$RYOKU_TARGET_CHROOT" /mnt useradd "${useradd_args[@]}"
-  run "$RYOKU_TARGET_CHROOT" /mnt cp -a /etc/skel/. "/home/$name/"
-  run "$RYOKU_TARGET_CHROOT" /mnt chown -R "$name:$name" "/home/$name"
-  run "$RYOKU_TARGET_CHROOT" /mnt chmod 0700 "/home/$name"
+  run btrfs subvolume create "${RYOKU_TARGET_ROOT%/}/home/$name"
+  run "$RYOKU_TARGET_CHROOT" "$RYOKU_TARGET_ROOT" useradd "${useradd_args[@]}"
+  run "$RYOKU_TARGET_CHROOT" "$RYOKU_TARGET_ROOT" cp -a /etc/skel/. "/home/$name/"
+  run "$RYOKU_TARGET_CHROOT" "$RYOKU_TARGET_ROOT" chown -R "$name:$name" "/home/$name"
+  run "$RYOKU_TARGET_CHROOT" "$RYOKU_TARGET_ROOT" chmod 0700 "/home/$name"
   printf '%s:%s\n' "$name" "$password_hash" | run_secret \
-    "$RYOKU_TARGET_CHROOT /mnt chpasswd -e (account:hash via stdin)" \
-    "$RYOKU_TARGET_CHROOT" /mnt chpasswd -e
+    "$RYOKU_TARGET_CHROOT $RYOKU_TARGET_ROOT chpasswd -e (account:hash via stdin)" \
+    "$RYOKU_TARGET_CHROOT" "$RYOKU_TARGET_ROOT" chpasswd -e
   if ((limit > 0)); then
-    run btrfs qgroup limit "$limit" "/mnt/home/$name"
+    run btrfs qgroup limit "$limit" "${RYOKU_TARGET_ROOT%/}/home/$name"
   fi
 }
 
 ryoku_accounts_root() {
   if [[ $RYOKU_ROOT_MODE == locked ]]; then
     log 'root account: locked (administrators use sudo)'
-    run "$RYOKU_TARGET_CHROOT" /mnt passwd -l root
+    run "$RYOKU_TARGET_CHROOT" "$RYOKU_TARGET_ROOT" passwd -l root
     return 0
   fi
   log 'root account: separate password'
   printf 'root:%s\n' "$RYOKU_ROOT_PASSWORD_HASH" | run_secret \
-    "$RYOKU_TARGET_CHROOT /mnt chpasswd -e (root:hash via stdin)" \
-    "$RYOKU_TARGET_CHROOT" /mnt chpasswd -e
+    "$RYOKU_TARGET_CHROOT $RYOKU_TARGET_ROOT chpasswd -e (root:hash via stdin)" \
+    "$RYOKU_TARGET_CHROOT" "$RYOKU_TARGET_ROOT" chpasswd -e
 }
 
 ryoku_accounts_create() {
   local index quota_requested=0 login_shell="/usr/bin/$RYOKU_LOGIN_SHELL"
   ryoku_accounts_validate
-  if [[ -z ${RYOKU_DRYRUN:-} && ! -x /mnt$login_shell ]]; then
+  if [[ -z ${RYOKU_DRYRUN:-} && ! -x "${RYOKU_TARGET_ROOT%/}$login_shell" ]]; then
     die 'login shell %s is missing from the target' "$login_shell"
   fi
-  run mkdir -p /mnt/home
+  run mkdir -p "${RYOKU_TARGET_ROOT%/}/home"
   for index in "${!RYOKU_ACCOUNT_LIMITS[@]}"; do
     ((RYOKU_ACCOUNT_LIMITS[index] == 0)) || quota_requested=1
   done
   if ((quota_requested)); then
     log 'home storage: enabling Btrfs quotas'
-    run btrfs quota enable /mnt/home
+    run btrfs quota enable "${RYOKU_TARGET_ROOT%/}/home"
   fi
   for index in "${!RYOKU_ACCOUNT_NAMES[@]}"; do
     ryoku_account_create_one "$index"
