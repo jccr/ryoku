@@ -14,7 +14,7 @@ func TestPreinstalledFlowLeavesTheDiskAlone(t *testing.T) {
 	}
 	want := []string{
 		"keyboard", "locale", "timezone", "network",
-		"compositor", "browser", "login-shell", "file-manager", "rashin",
+		"compositor", "browser", "login-shell", "file-manager", "rashin", "apps",
 		"hostname", "administrator", "root-account", "other-people", "review",
 	}
 	if !reflect.DeepEqual(keys, want) {
@@ -52,5 +52,36 @@ func TestPreinstalledReviewNamesNoDisk(t *testing.T) {
 	}
 	if !strings.Contains(body, "this system") {
 		t.Fatalf("Asahi review does not say it sets up this system:\n%s", body)
+	}
+}
+
+func TestPreinstalledHandsUntickedAppsToWithout(t *testing.T) {
+	m := model{variant: variantAsahi, picks: map[string]string{}}
+	rows := appRowsForVariant(variantAsahi)
+	m.keep = appDefaultsForVariant(variantAsahi)
+	var dropped string
+	for _, r := range rows {
+		if r.Req == "" && r.Def {
+			m.keep[r.ID] = false
+			dropped = r.ID
+			break
+		}
+	}
+	if dropped == "" {
+		t.Fatal("the Fedora table offers no removable app")
+	}
+	var without string
+	for _, kv := range m.installEnv() {
+		if v, ok := strings.CutPrefix(kv, "RYOKU_WITHOUT="); ok {
+			without = v
+		}
+	}
+	if !strings.Contains(","+without+",", ","+dropped+",") {
+		t.Fatalf("RYOKU_WITHOUT = %q, want it to name %s", without, dropped)
+	}
+	for _, r := range rows {
+		if r.Req != "" && strings.Contains(","+without+",", ","+r.ID+",") {
+			t.Fatalf("RYOKU_WITHOUT names required app %s", r.ID)
+		}
 	}
 }

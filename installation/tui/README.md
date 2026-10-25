@@ -65,9 +65,10 @@ and the four hardware profiles remain available from the Void package table.
 
 The `asahi` variant runs on a system that is already installed: the Asahi
 installer laid down Fedora Asahi Remix, and Ryoku's first-boot service starts the
-wizard there (`../asahi/`). It skips the hardware, profile, graphics, Apps &
-tools, disk and encryption steps, reads its choices from the Fedora package
-table, and its backend reports the `system`, `accounts`, `desktop` and `finish`
+wizard there (`../asahi/`). It skips the hardware, profile, graphics, disk and
+encryption steps, reads its choices from the Fedora package table, hands the
+unticked Apps & tools rows over as `RYOKU_WITHOUT` component IDs, and its
+backend reports the `system`, `accounts`, `desktop` and `finish`
 install rows.
 
 Some steps are conditional: the `gpu` (graphics mode) step matters only on a

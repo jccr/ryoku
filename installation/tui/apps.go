@@ -275,6 +275,20 @@ func (m model) selectedApps() map[string]bool {
 	return m.keep
 }
 
+// withoutComponents names the Apps & tools rows left unticked by component ID:
+// the --without list ryoku-shell-install takes on a preinstalled system, which
+// leaves their packages out, records them for the doctor and hides them.
+func (m model) withoutComponents() []string {
+	selected := m.componentSelections()
+	var ids []string
+	for _, r := range appRowsForVariant(m.variant) {
+		if r.Req == "" && !selected[r.ID] {
+			ids = append(ids, r.ID)
+		}
+	}
+	return ids
+}
+
 func (m model) componentSelections() map[string]bool {
 	plan := installerChoicesForVariant(m.variant)
 	selected := plan.DefaultComponents()
