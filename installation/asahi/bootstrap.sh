@@ -6,7 +6,7 @@
 # and no install report sent to the Asahi project. The installer that
 # partitions the Mac is the Asahi project's own, unmodified.
 #
-#   curl -fsSL https://repo.ryoku.dev/stable/asahi/bootstrap.sh | sh
+#   curl -fsSL https://ryoku-repo.jccr.dev/stable/asahi/bootstrap.sh | sh
 #   RYOKU_CHANNEL=testing sh bootstrap.sh
 
 # Truncation guard
@@ -34,7 +34,7 @@ if true; then
     PKG_SHA256=484d999e53b4aef27d17c4478e49567e96842f8a6cb35c073a0df5bf0bbe8276
 
     export INSTALLER_BASE=https://cdn.asahilinux.org/installer
-    export INSTALLER_DATA="https://repo.ryoku.dev/stable/asahi/$RYOKU_CHANNEL/installer_data.json"
+    export INSTALLER_DATA="https://ryoku-repo.jccr.dev/stable/asahi/$RYOKU_CHANNEL/installer_data.json"
     export REPO_BASE=https://cdn.asahilinux.org
 
     #TMP="$(mktemp -d)"

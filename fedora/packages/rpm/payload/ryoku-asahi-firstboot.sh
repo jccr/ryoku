@@ -14,7 +14,7 @@ build() {
 # installs the desktop from, so the setup and the desktop come from one channel.
 _ref() {
   case ${RYOKU_CHANNEL:-} in
-    testing) printf 'unstable-dev\n' ;;
+    testing) printf 'aarch64-phase4a\n' ;;
     *) printf 'main\n' ;;
   esac
 }
