@@ -1667,8 +1667,9 @@ func (m model) onKey(k string) (tea.Model, tea.Cmd) {
 				// disk strategy. partReady gates Tab past partitions, so this
 				// should be unreachable; if it ever is, refuse to launch rather
 				// than ship an empty RYOKU_DISK_STRATEGY (backend fails closed).
+				// A preinstalled system has no disk step, so it carries no strategy.
 				strat := m.picks["disk"]
-				if strat != "whole" && strat != "alongside" {
+				if strat != "whole" && strat != "alongside" && !isPreinstalledVariant(m.variant) {
 					return m, nil
 				}
 				// Real-hardware gates: Secure Boot (Limine unsigned) and an offline
