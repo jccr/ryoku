@@ -291,9 +291,14 @@ is_laptop() {
     [[ -r $ps/type ]] || continue
     [[ $(<"$ps/type") == "Battery" ]] && return 0
   done
-  if grep -qsi 'Lid Switch' /sys/class/input/event*/device/name 2>/dev/null; then
-    return 0
-  fi
+  # SW_LID (bit 0) marks a lid whatever the device is called (a Mac's is not
+  # "Lid Switch").
+  local sw bits
+  for sw in /sys/class/input/input*/capabilities/sw; do
+    [[ -r $sw ]] || continue
+    bits=$(<"$sw")
+    (( 16#${bits##* } & 1 )) && return 0
+  done
   [[ -d /proc/acpi/button/lid ]] && compgen -G '/proc/acpi/button/lid/*' >/dev/null && return 0
   return 1
 }
