@@ -24,9 +24,16 @@ is_laptop() {
     [[ $(<"$ps/type") == "Battery" ]] && return 0
   done
 
-  local input_glob="${RYOKU_INPUT_NAME_GLOB:-/sys/class/input/event*/device/name}"
-  # shellcheck disable=SC2086  # $input_glob is a path glob; it must word-split and expand
-  grep -qsi 'Lid Switch' $input_glob 2>/dev/null && return 0
+  # A lid is any input device with SW_LID (bit 0) among its switches; its name
+  # varies ("Lid Switch" on ACPI, "Apple SMC power/lid events" on a Mac).
+  local sw_glob="${RYOKU_INPUT_SW_GLOB:-/sys/class/input/input*/capabilities/sw}"
+  local sw bits
+  # shellcheck disable=SC2086  # $sw_glob is a path glob; it must word-split and expand
+  for sw in $sw_glob; do
+    [[ -r $sw ]] || continue
+    bits=$(<"$sw")
+    (( 16#${bits##* } & 1 )) && return 0
+  done
 
   local lid_dir="${RYOKU_LID_DIR:-/proc/acpi/button/lid}"
   [[ -d $lid_dir ]] && compgen -G "$lid_dir/*" >/dev/null && return 0
@@ -47,7 +54,7 @@ Env overrides for tests and one-off policy:
   RYOKU_ASSUME_LAPTOP=1|0
   RYOKU_CHASSIS_TYPE_FILE=/path/to/chassis_type
   RYOKU_POWER_SUPPLY_DIR=/path/to/power_supply
-  RYOKU_INPUT_NAME_GLOB='/path/event*/device/name'
+  RYOKU_INPUT_SW_GLOB='/path/input*/capabilities/sw'
   RYOKU_LID_DIR=/path/to/lid
 USAGE
 }
