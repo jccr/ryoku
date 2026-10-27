@@ -3,7 +3,7 @@
 
 Name:           xpadneo-dkms
 Version:        0.10.4
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Advanced Linux driver for Xbox One wireless gamepads
 License:        GPL-2.0-only AND GPL-3.0-or-later
 URL:            https://github.com/atar-axis/xpadneo
@@ -15,7 +15,8 @@ Requires:       dkms
 Requires:       make
 Requires:       bluez
 Requires:       bluez-tools
-Requires:       kernel-devel
+# Fedora Asahi Remix runs kernel-16k and conflicts with plain kernel-devel.
+Requires:       (kernel-16k-devel if kernel-16k else kernel-devel)
 Requires:       kernel-headers
 
 %description

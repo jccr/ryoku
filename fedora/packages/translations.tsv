@@ -128,7 +128,7 @@ limine-mkinitcpio-hook	-	system	Fedora uses GRUB and dracut, not mkinitcpio hook
 limine-snapper-sync	-	system	Fedora snapshots are not supported in this release.
 linux	kernel	system	
 linux-firmware	linux-firmware	system	
-linux-headers	kernel-devel kernel-headers	desktop	
+linux-headers	kernel-headers	desktop	ryoku-desktop brings the kernel-devel that matches the running kernel flavor.
 localsend-bin	localsend-bin	extra	Ryoku-owned RPM.
 looking-glass	-	optional	No Fedora package provides this Arch package.
 lsp-plugins-lv2	lsp-plugins-lv2	desktop	Python equalizer and compressor plugins.
