@@ -9,6 +9,11 @@ export RYOKU_REPO=/usr/share/ryoku
 export RYOKU_BACKEND=/usr/libexec/ryoku-asahi/ryoku-firstboot-install
 export RYOKU_SESSION=console
 
+# The Retina panel makes the default 8x16 console font unreadably small. The
+# offline install cannot pull a font package in, so use kbd-misc's HiDPI font
+# when the image has it.
+setfont -C /dev/tty1 latarcyrheb-sun32 2>/dev/null || :
+
 /usr/libexec/ryoku-asahi/ryoku-tui
 # The backend disables the service once setup is done. Until then this machine
 # has no account to log in with, so leaving the wizard fails the unit and
