@@ -99,7 +99,8 @@ Requires:       plymouth-scripts
 Requires:       plymouth-plugin-script
 Requires:       plymouth-plugin-label
 Requires:       dracut
-Requires:       kernel-devel
+# Fedora Asahi Remix runs kernel-16k and conflicts with plain kernel-devel.
+Requires:       (kernel-16k-devel if kernel-16k else kernel-devel)
 Requires:       kernel-headers
 Requires:       dkms
 
