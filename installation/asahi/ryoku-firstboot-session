@@ -14,6 +14,11 @@ export RYOKU_SESSION=console
 # when the image has it.
 setfont -C /dev/tty1 latarcyrheb-sun32 2>/dev/null || :
 
+# Fedora Asahi Remix boots without quiet, so every kernel message lands on the
+# wizard's console. Keep only critical ones there, as the ISO's loglevel=3 does;
+# the journal still gets everything.
+dmesg -n 3
+
 /usr/libexec/ryoku-asahi/ryoku-tui
 # The backend disables the service once setup is done. Until then this machine
 # has no account to log in with, so leaving the wizard fails the unit and
