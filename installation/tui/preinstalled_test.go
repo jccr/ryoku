@@ -85,3 +85,23 @@ func TestPreinstalledHandsUntickedAppsToWithout(t *testing.T) {
 		}
 	}
 }
+
+func TestPreinstalledReviewStartsWithoutADiskStrategy(t *testing.T) {
+	t.Setenv("RYOKU_KB_PRESET", "")
+	t.Setenv("RYOKU_BACKEND", "true")
+	flow := stepsForVariant(variantAsahi)
+	m := model{
+		variant: variantAsahi, flow: flow, idx: flowIndex(flow, "review"),
+		state: "wizard", netOnline: true, yes: true, pwHash: sha512Crypt("password", "ownersalt"),
+		picks: map[string]string{
+			"keyboard": "us", "locale": "en_US.UTF-8", "timezone": "UTC", "hostname": "ryoku", "username": "ryoku",
+		},
+	}
+	if _, err := m.installEnvChecked(); err != nil {
+		t.Fatalf("Asahi install env refused: %v", err)
+	}
+	next, _ := m.onKey("enter")
+	if got := next.(model).state; got != "install" {
+		t.Fatalf("Enter on Asahi review left state %q, want install", got)
+	}
+}
