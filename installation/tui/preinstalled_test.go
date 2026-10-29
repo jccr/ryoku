@@ -1,36 +1,86 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
 	"testing"
 )
 
+func useFirstbootState(t *testing.T) {
+	old := firstbootStateDir
+	firstbootStateDir = t.TempDir()
+	t.Cleanup(func() { firstbootStateDir = old })
+}
+
+func flowKeys(flow []step) []string {
+	var keys []string
+	for _, s := range flow {
+		keys = append(keys, s.key)
+	}
+	return keys
+}
+
+// The preinstalled flow is the ISO flow without the questions the installer
+// that laid the system down already answered. The skip set is spelled out here,
+// not read from preinstalledSkips, so a wrong entry there fails the test.
 func TestPreinstalledFlowLeavesTheDiskAlone(t *testing.T) {
 	t.Setenv("RYOKU_KB_PRESET", "")
-	keys := func(flow []step) []string {
-		var out []string
-		for _, s := range flow {
-			out = append(out, s.key)
-		}
-		return out
+	useFirstbootState(t)
+	skipped := map[string]bool{
+		"hardware": true, "profile": true, "gpu": true, "gaming": true,
+		"diskpick": true, "disk": true, "partitions": true, "encryption": true,
 	}
 	var want []string
-	for _, key := range keys(stepsForVariant("")) {
-		if !preinstalledSkips[key] {
+	for _, key := range flowKeys(stepsForVariant("")) {
+		if !skipped[key] {
 			want = append(want, key)
 		}
 	}
 	for _, variant := range []string{variantAsahi, variantAsahiALARM} {
-		if got := keys(stepsForVariant(variant)); !reflect.DeepEqual(got, want) {
+		if got := flowKeys(stepsForVariant(variant)); !reflect.DeepEqual(got, want) {
 			t.Fatalf("%s flow = %v, want the ISO flow without the disk and hardware steps: %v", variant, got, want)
 		}
 	}
-	for _, key := range []string{"administrator", "review"} {
+	for _, key := range []string{"administrator", "root-account", "other-people", "review"} {
 		if !slices.Contains(want, key) {
 			t.Fatalf("the preinstalled flow lost its %s step: %v", key, want)
 		}
+	}
+}
+
+// A retried first boot keeps the accounts the failed run made: the wizard asks
+// no account questions, names the kept administrator, and hands the backend no
+// account answers.
+func TestPreinstalledRetryKeepsTheAccounts(t *testing.T) {
+	t.Setenv("RYOKU_KB_PRESET", "")
+	useFirstbootState(t)
+	if err := os.WriteFile(filepath.Join(firstbootStateDir, "accounts"), []byte("ada\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, kept := keptAdministrator(variantVoid); kept {
+		t.Fatal("an ISO install read the first-boot marker")
+	}
+	name, kept := keptAdministrator(variantAsahiALARM)
+	if !kept || name != "ada" {
+		t.Fatalf("keptAdministrator = %q, %v; want ada, true", name, kept)
+	}
+	flow := flowKeys(stepsForVariant(variantAsahiALARM))
+	for key := range keptAccountSteps {
+		if slices.Contains(flow, key) {
+			t.Fatalf("the retry still asks %s: %v", key, flow)
+		}
+	}
+	m := model{variant: variantAsahiALARM, keptAccounts: true, flow: stepsForVariant(variantAsahiALARM), picks: map[string]string{
+		"keyboard": "us", "locale": "en_US.UTF-8", "timezone": "UTC", "hostname": "ryoku", "username": name,
+	}}
+	if env, err := m.accountsEnv(); err != nil || len(env) != 0 {
+		t.Fatalf("accountsEnv = %v, %v; want no account answers", env, err)
+	}
+	if body := m.reviewBody(100); !strings.Contains(body, "ada, kept from the earlier setup") {
+		t.Fatalf("the review does not name the kept administrator:\n%s", body)
 	}
 }
 

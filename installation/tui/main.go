@@ -593,6 +593,9 @@ func stepsForVariant(variant string) []step {
 	if isPreinstalledVariant(variant) {
 		all = withoutSteps(all, preinstalledSkips)
 	}
+	if _, kept := keptAdministrator(variant); kept {
+		all = withoutSteps(all, keptAccountSteps)
+	}
 	// On the graphical relaunch (keymapRelaunch), the keyboard layout is already
 	// chosen and cage runs under it; drop the step so the wizard resumes at locale,
 	// with the password captured in the user's real layout.
@@ -983,6 +986,7 @@ type model struct {
 	logPath                                      string
 	qrStr                                        string
 	pwHash                                       string
+	keptAccounts                                 bool // a retried first boot keeps the accounts it made
 	luksPass                                     string
 	netSSID                                      string
 	istream                                      *installStream
@@ -1097,6 +1101,10 @@ func newModel() model {
 	}
 	if kb := os.Getenv("RYOKU_KB_PRESET"); kb != "" {
 		m.picks["keyboard"] = kb
+	}
+	if name, kept := keptAdministrator(variant); kept {
+		m.picks["username"] = name
+		m.keptAccounts = true
 	}
 	hw := ensureHW()
 	m.hwOK, m.hwHybrid = hw.ok, hw.hybrid
@@ -3651,11 +3659,15 @@ func (m model) reviewBody(w int) string {
 			row(i18n.T("disk"), m.diskDev),
 			fg(cSub, fmt.Sprintf("%-11s", i18n.T("strategy")))+stratCell)
 	}
-	lines = append(lines,
-		row(i18n.T("hostname"), m.picks["hostname"]),
-		row(i18n.T("admin"), accountReviewName(m.picks["username"], m.accounts.adminFullName)),
-		row(i18n.T("root"), rootReviewLabel(m.accounts.rootMode)),
-	)
+	lines = append(lines, row(i18n.T("hostname"), m.picks["hostname"]))
+	if m.keptAccounts {
+		lines = append(lines, row(i18n.T("admin"), i18n.Tf("%s, kept from the earlier setup", m.picks["username"])))
+	} else {
+		lines = append(lines,
+			row(i18n.T("admin"), accountReviewName(m.picks["username"], m.accounts.adminFullName)),
+			row(i18n.T("root"), rootReviewLabel(m.accounts.rootMode)),
+		)
+	}
 	for _, person := range m.accounts.people {
 		lines = append(lines, row(i18n.T("person"), accountReviewName(person.Name, person.FullName)+" · "+roleLabel(person.Role)))
 	}

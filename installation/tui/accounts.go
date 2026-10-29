@@ -597,6 +597,9 @@ func accountHashValid(hash string) bool {
 }
 
 func (m model) accountsEnv() ([]string, error) {
+	if m.keptAccounts {
+		return nil, nil
+	}
 	username := m.picks["username"]
 	if err := validateAccountName(username, nil); err != nil {
 		return nil, fmt.Errorf("administrator account: %w", err)

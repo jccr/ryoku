@@ -102,8 +102,7 @@ expect_in_order "$out" "${expect[@]}"
 [[ $out != *dnf* ]] || fail "the Arch first boot calls dnf:
 $out"
 
-# A retry after a later step failed keeps the accounts the first run made and
-# gives its administrator the password just entered.
+# A retry after a later step failed keeps the accounts the first run made.
 mkdir -p "$tmp/state"
 printf 'ada\n' >"$tmp/state/accounts"
 out=$(dryrun arch RYOKU_FIRSTBOOT_STATE="$tmp/state" RYOKU_USERNAME=grace) \
@@ -112,8 +111,7 @@ $out"
 expect_in_order "$out" \
   '@@RYOKU_STEP accounts' \
   'accounts: kept from the earlier run (administrator ada)' \
-  'DRYRUN: chpasswd -e (ada:hash via stdin)' \
   "${desktop[@]}"
-[[ $out != *useradd* && $out != *'subvolume create'* ]] || fail "the retry creates the accounts again:
+[[ $out != *useradd* && $out != *'subvolume create'* && $out != *chpasswd* ]] || fail "the retry creates the accounts again:
 $out"
 printf 'asahi first-boot dry-run: ok\n'

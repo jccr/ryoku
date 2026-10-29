@@ -79,8 +79,8 @@ firstboot_system() {
 }
 
 # A run that failed later left its accounts behind, and creating them again
-# would fail. The retry keeps them, takes the administrator it made, and gives
-# it the password just entered.
+# would fail. The retry keeps them as they are, and the wizard, which reads the
+# same marker, asks no account questions.
 firstboot_accounts() {
   step accounts
   # The accounts are created with their login shell, so it lands first.
@@ -88,9 +88,6 @@ firstboot_accounts() {
   if [[ -r $accounts_stamp ]]; then
     RYOKU_USERNAME=$(cat "$accounts_stamp")
     log 'accounts: kept from the earlier run (administrator %s)' "$RYOKU_USERNAME"
-    ryoku_account_validate_hash "$RYOKU_USERNAME" "$RYOKU_PASSWORD_HASH"
-    printf '%s:%s\n' "$RYOKU_USERNAME" "$RYOKU_PASSWORD_HASH" | run_secret \
-      "chpasswd -e ($RYOKU_USERNAME:hash via stdin)" chpasswd -e
     return
   fi
   ryoku_accounts_create
