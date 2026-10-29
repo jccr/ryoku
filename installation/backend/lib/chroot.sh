@@ -7,6 +7,9 @@
 # edition reuses.
 
 : "${RYOKU_TARGET_CHROOT:=arch-chroot}"
+# The locale step also runs on a system that is already installed (the Asahi
+# first boot), with / as the root and RYOKU_TARGET_CHROOT=chroot.
+: "${RYOKU_TARGET_ROOT:=/mnt}"
 
 ryoku_configure() {
   ryoku_cfg_locale
@@ -20,9 +23,10 @@ ryoku_configure() {
 }
 
 ryoku_cfg_locale() {
+  local root=${RYOKU_TARGET_ROOT%/}
   log 'locale: %s' "$RYOKU_LOCALE"
   # dots escaped so en_US.UTF-8 can only match its own line.
-  run sed -i "s|^#\(${RYOKU_LOCALE//./\\.} \)|\1|" /mnt/etc/locale.gen
+  run sed -i "s|^#\(${RYOKU_LOCALE//./\\.} \)|\1|" "$root/etc/locale.gen"
   # a locale locale.gen does not list (a manual RYOKU_LOCALE, a slimmed file)
   # would generate nothing and leave every tool warning "cannot set locale";
   # append it so locale-gen builds exactly what locale.conf names. only when
@@ -30,18 +34,18 @@ ryoku_cfg_locale() {
   # bogus name (localedef exits 4) would abort the install after the wipe,
   # strictly worse than the warning it fixes.
   if [[ -z ${RYOKU_DRYRUN:-} && $RYOKU_LOCALE == *.* ]] \
-    && ! grep -q "^${RYOKU_LOCALE} " /mnt/etc/locale.gen; then
-    if [[ -f /mnt/usr/share/i18n/locales/${RYOKU_LOCALE%%.*} ]]; then
+    && ! grep -q "^${RYOKU_LOCALE} " "$root/etc/locale.gen"; then
+    if [[ -f $root/usr/share/i18n/locales/${RYOKU_LOCALE%%.*} ]]; then
       log 'locale: %s not listed in locale.gen, appending' "$RYOKU_LOCALE"
-      printf '%s %s\n' "$RYOKU_LOCALE" "${RYOKU_LOCALE##*.}" >>/mnt/etc/locale.gen
+      printf '%s %s\n' "$RYOKU_LOCALE" "${RYOKU_LOCALE##*.}" >>"$root/etc/locale.gen"
     else
       log 'warn: %s has no source definition in the target; not appending (locale-gen would fail the install)' "$RYOKU_LOCALE"
     fi
   fi
-  write_file /mnt/etc/locale.conf <<EOF
+  write_file "$root/etc/locale.conf" <<EOF
 LANG=$RYOKU_LOCALE
 EOF
-  run arch-chroot /mnt locale-gen
+  run "$RYOKU_TARGET_CHROOT" "${root:-/}" locale-gen
 }
 
 ryoku_cfg_keymap() {
