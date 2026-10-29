@@ -44,6 +44,10 @@ repo. Packages publish only from `main` release tags, never from `unstable-dev`.
   and installs the helper scripts (`ryoku-cmd-*`, the hardware `ryoku-*`,
   `ryoku-fastfetch`) to `/usr/bin` and the GPU udev rule to
   `/usr/lib/udev/rules.d`.
+- `ryoku-asahi-firstboot` -- aarch64 only, outside the desktop set: the first
+  boot of Ryoku's Arch Linux ARM image for Apple Silicon Macs (the preinstalled
+  installer wizard on tty1, its backend, and the shell installer). Its payload
+  is shared with the Fedora Asahi Remix extra (`installation/asahi/`).
 
 ## Build-from-checkout model
 

@@ -16,6 +16,7 @@ BuildRequires:  golang >= 1.26.4
 Requires:       btrfs-progs
 Requires:       curl
 Requires:       NetworkManager
+Requires:       NetworkManager-wifi
 Requires:       sudo
 Requires:       systemd
 Requires:       util-linux

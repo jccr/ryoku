@@ -1,0 +1,32 @@
+# Maintainer: Ryoku <releases@ryoku.dev>
+#
+# The first-boot setup of Ryoku's Arch Linux ARM image for Apple Silicon Macs
+# (installation/asahi/image/): the preinstalled installer wizard on tty1, its
+# backend, and the shell installer it hands the desktop to. Built from the
+# in-repo source; the payload is shared with the Fedora Asahi Remix extra.
+pkgname=ryoku-asahi-firstboot
+pkgver=${RYOKU_PKGVER:-0.1.0}
+pkgrel=1
+pkgdesc="Ryoku first-boot setup for Arch Linux ARM on Apple Silicon"
+arch=('aarch64')
+url="https://ryoku.dev"
+license=('GPL-3.0-or-later')
+depends=('btrfs-progs' 'curl' 'networkmanager' 'sudo')
+makedepends=('go')
+source=()
+
+_repo="$startdir/../../.."
+
+build() {
+  RYOKU_SRC="$_repo" \
+  RYOKU_BUILD_DIR="$srcdir" \
+  RYOKU_CHANNEL="${RYOKU_CHANNEL:-stable}" \
+    "$startdir/payload.sh" build
+}
+
+package() {
+  RYOKU_SRC="$_repo" \
+  RYOKU_BUILD_DIR="$srcdir" \
+  RYOKU_CHANNEL="${RYOKU_CHANNEL:-stable}" \
+    "$startdir/payload.sh" install "$pkgdir" systemd arch
+}

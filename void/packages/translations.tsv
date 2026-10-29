@@ -206,6 +206,7 @@ rtkit	rtkit	desktop
 rust	rust	desktop	
 ryogami	@repo	desktop	Ryoku-owned package built from the checkout.
 ryoku	@repo	desktop	Ryoku-owned package built from the checkout.
+ryoku-asahi-firstboot	-	system	Apple Silicon Macs run Fedora Asahi Remix or Arch Linux ARM, not Void.
 ryoku-blobs	@repo	desktop	Ryoku-owned package built from the checkout.
 ryoku-cursor-material	ryoku-cursor-material	desktop	repo=ryoku
 ryoku-cursors	ryoku-cursors	desktop	repo=ryoku

@@ -5,7 +5,7 @@ set -euo pipefail
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
 backend=$repo/installation/asahi/ryoku-firstboot-install
-payload=$repo/fedora/packages/rpm/payload/ryoku-asahi-firstboot.sh
+payload=$repo/release/packages/ryoku-asahi-firstboot/payload.sh
 
 fail() {
   printf 'asahi first-boot dry-run: %s\n' "$*" >&2

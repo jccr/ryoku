@@ -163,6 +163,8 @@ for pkg in "${!neutral_opt[@]}" "${!niri_opt[@]}" "${!hypr_opt[@]}" "${!wayf_opt
 done
 add_lane bash desktop
 add_lane ryoku-keyring desktop
+# Ships outside the desktop set, to the first boot of an Apple Silicon Mac.
+add_lane ryoku-asahi-firstboot system
 add_lane ryoku-palette-bridge desktop
 add_lane udev desktop
 for pkg in dualsensectl dbus hidapi libusb; do add_lane "$pkg" optional; done
