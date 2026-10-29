@@ -7,11 +7,11 @@
 # first-boot wizard, which creates the real accounts.
 #
 #   ROOT_UUID, EFI_UUID   the filesystem IDs build.sh formats the image with
-#   /tmp/ryoku-image/     this script and the ryoku-asahi-firstboot package
+#   /var/tmp/ryoku-image/     this script and the ryoku-asahi-firstboot package
 set -euo pipefail
 
 : "${ROOT_UUID:?}" "${EFI_UUID:?}"
-files=/tmp/ryoku-image
+files=/var/tmp/ryoku-image
 asahi_alarm_key=12CE6799A94A3F1B5DDFFE88F576553597FB8FEB
 
 pacman_repos() {

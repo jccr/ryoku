@@ -73,11 +73,13 @@ prepare_root() {
   mkdir -p "$root"
   bsdtar -xpf "$TARBALL" -C "$root"
   mount --bind "$root" "$root"
-  install -d "$root/tmp/ryoku-image"
-  install -m755 "$here/setup.sh" "$root/tmp/ryoku-image/setup.sh"
-  install -m644 "$package" "$root/tmp/ryoku-image/"
+  # arch-chroot mounts a fresh tmpfs on /tmp, so the inputs wait in /var/tmp.
+  install -d "$root/var/tmp/ryoku-image"
+  install -m755 "$here/setup.sh" "$root/var/tmp/ryoku-image/setup.sh"
+  install -m644 "$package" "$root/var/tmp/ryoku-image/"
   log 'setting up the root'
-  arch-chroot "$root" /tmp/ryoku-image/setup.sh
+  arch-chroot "$root" /var/tmp/ryoku-image/setup.sh
+  rm -rf "$root/var/tmp/ryoku-image"
 }
 
 pack_root() {
