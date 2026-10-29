@@ -7,7 +7,7 @@
 # partitions the Mac is the Asahi project's own, unmodified.
 #
 #   curl -fsSL https://ryoku-repo.jccr.dev/stable/asahi/bootstrap.sh | sh
-#   RYOKU_CHANNEL=testing sh bootstrap.sh
+#   curl -fsSL https://ryoku-repo.jccr.dev/stable/asahi/testing/bootstrap.sh | sh
 
 # Truncation guard
 if true; then
@@ -37,7 +37,6 @@ if true; then
     export INSTALLER_DATA="https://ryoku-repo.jccr.dev/stable/asahi/$RYOKU_CHANNEL/installer_data.json"
     export REPO_BASE=https://cdn.asahilinux.org
 
-    #TMP="$(mktemp -d)"
     TMP=/tmp/asahi-install
 
     echo
@@ -67,7 +66,7 @@ if true; then
         echo "    against. Nothing was changed; get a current script from Ryoku."
         exit 1
     fi
-    curl --no-progress-meter -L -o installer_data.json "$INSTALLER_DATA"
+    curl --no-progress-meter -fL -o installer_data.json "$INSTALLER_DATA"
 
     echo "  Extracting..."
 

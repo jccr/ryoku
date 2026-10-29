@@ -64,10 +64,13 @@ them, so neither publish drops the other:
   previous image for installs already under way, and writes the Arch Linux ARM
   entry.
 
-Both upload `asahi/bootstrap.sh` beside the channels. A Mac then installs with:
+Both upload the channel's bootstrap: stable to `asahi/bootstrap.sh`, testing to
+`asahi/testing/bootstrap.sh`, so a testing push never replaces the script stable
+runs. A Mac then installs with:
 
 ```sh
-curl -fsSL https://ryoku-repo.jccr.dev/stable/asahi/bootstrap.sh | RYOKU_CHANNEL=testing sh
+curl -fsSL https://ryoku-repo.jccr.dev/stable/asahi/bootstrap.sh | sh
+curl -fsSL https://ryoku-repo.jccr.dev/stable/asahi/testing/bootstrap.sh | sh
 ```
 
 To review it first, download `bootstrap.sh`, read it, then run `sh bootstrap.sh`.

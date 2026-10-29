@@ -5,8 +5,8 @@
 #
 # Uploads the entry to asahi/<channel>/os-list/<edition>.json, rebuilds
 # asahi/<channel>/installer_data.json from every edition's entry there, and
-# uploads bootstrap.sh beside the channels. The Fedora publish and the Arch
-# Linux ARM image build each call it for their own edition.
+# uploads the channel's bootstrap.sh. The Fedora publish and the Arch Linux ARM
+# image build each call it for their own edition.
 set -euo pipefail
 
 remote=${1:?rclone remote}
@@ -17,8 +17,27 @@ here=$(cd "$(dirname "$0")" && pwd)
 list=$(mktemp -d)
 trap 'rm -rf "$list"' EXIT
 
-rclone copyto "$entry" "$remote/asahi/$channel/os-list/$edition.json"
-rclone copy "$remote/asahi/$channel/os-list/" "$list/" --include '*.json'
-"$here/installer-data" merge "$list"/*.json >"$list/installer_data.json"
-rclone copyto "$list/installer_data.json" "$remote/asahi/$channel/installer_data.json"
-rclone copyto "$here/bootstrap.sh" "$remote/asahi/bootstrap.sh"
+entries="$remote/asahi/$channel/os-list/"
+rclone copyto "$entry" "$entries$edition.json"
+
+# The other edition's publish can upload its entry while this one merges. Merge
+# again until the entries are the same after the upload as they were before it,
+# so whichever publish finishes last writes a list with every edition.
+for _ in 1 2 3 4 5; do
+  before=$(rclone lsf --format pts "$entries")
+  rm -f "$list"/*.json
+  rclone copy "$entries" "$list/" --include '*.json'
+  "$here/installer-data" merge "$list"/*.json >"$list/merged"
+  rclone copyto "$list/merged" "$remote/asahi/$channel/installer_data.json"
+  [[ $(rclone lsf --format pts "$entries") != "$before" ]] || break
+done
+
+# Stable serves the documented asahi/bootstrap.sh. Another channel gets its own
+# copy that defaults to it, so a testing push never replaces what stable runs.
+if [[ $channel == stable ]]; then
+  rclone copyto "$here/bootstrap.sh" "$remote/asahi/bootstrap.sh"
+else
+  sed "s/RYOKU_CHANNEL:-stable}/RYOKU_CHANNEL:-$channel}/" "$here/bootstrap.sh" >"$list/bootstrap.sh"
+  grep -q "RYOKU_CHANNEL:-$channel}" "$list/bootstrap.sh"
+  rclone copyto "$list/bootstrap.sh" "$remote/asahi/$channel/bootstrap.sh"
+fi
