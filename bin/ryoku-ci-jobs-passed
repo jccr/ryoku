@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# ryoku-ci-jobs-passed: did this run's jobs for one leg all succeed?
+#
+# A publish matrix leg needs only its own arch's build and install jobs, but a
+# job's `needs` waits on every leg of the jobs before it. Each leg asks this
+# instead, so one arch's failure never holds back another's publish, and the
+# failure marker only touches the arches that did not publish.
+#
+# usage: ryoku-ci-jobs-passed <name fragment>...
+# exit: 0 when at least one job of this run attempt has every fragment in its
+#       name and all of those concluded success; 1 otherwise
+# needs: gh, GITHUB_REPOSITORY, GITHUB_RUN_ID, GITHUB_RUN_ATTEMPT, GH_TOKEN
+set -euo pipefail
+
+(($#)) || { echo 'usage: ryoku-ci-jobs-passed <name fragment>...' >&2; exit 1; }
+
+matched=0
+while IFS=$'\t' read -r name conclusion; do
+  for fragment in "$@"; do
+    [[ $name == *"$fragment"* ]] || continue 2
+  done
+  matched=1
+  if [[ $conclusion != success ]]; then
+    echo "ryoku-ci-jobs-passed: $name: ${conclusion:-not finished}" >&2
+    exit 1
+  fi
+done < <(gh api --paginate \
+  "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
+  --jq '.jobs[] | [.name, (.conclusion // "")] | @tsv')
+
+((matched)) || { echo "ryoku-ci-jobs-passed: no job matches: $*" >&2; exit 1; }

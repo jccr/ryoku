@@ -386,6 +386,9 @@ jobs:
   gate:
     name: Required checks passed
     needs: build
+    # Ordered after the build, not gated on it: one arch's failed build must not
+    # hold back the other arch's publish.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -405,8 +408,9 @@ jobs:
   # sees the repo the moment its db lands). the install verifies the release
   # key's signatures exactly as a user's pacman does.
   container-install:
-    name: "container install (${{ matrix.base }})"
+    name: "container install (${{ matrix.base }}, ${{ matrix.arch }})"
     needs: build
+    if: ${{ !cancelled() }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     strategy:
@@ -471,9 +475,11 @@ jobs:
         run: RYOKU_PREBUILT_REPO=1 installation/tests/container-install.sh ${{ matrix.base }}
 
   publish:
-    # only after the gate passes on every base; uploads the bytes it tested.
+    # only after its arch's build and install pass on every base; uploads the
+    # bytes they tested. The other arch's legs never hold it back.
     name: "Publish the [ryoku] repo (${{ matrix.arch }})"
     needs: [build, container-install, gate]
+    if: ${{ !cancelled() && needs.gate.result == 'success' && needs.build.outputs.channel != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -495,6 +501,13 @@ jobs:
       - name: Install the publish tools
         # rclone uploads, jq and bsdtar verify, gh dispatches the release ISO
         run: pacman -Syu --noconfirm --needed rclone jq libarchive github-cli
+      - name: Require this arch's build and install
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ./bin/ryoku-ci-jobs-passed "Build and sign the [ryoku] repo (${{ matrix.arch }})"
+          ./bin/ryoku-ci-jobs-passed "container install (" ", ${{ matrix.arch }})"
       - name: Fetch the signed repo
         uses: actions/download-artifact@v4
         with:
@@ -711,11 +724,14 @@ jobs:
           CHANNEL: ${{ needs.build.outputs.channel }}
           RELEASE: ${{ needs.build.outputs.release }}
           PREFIX: ${{ needs.build.outputs.prefix }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           ./bin/ryoku-r2-config
           export PATH="$HOME/.local/share/ryoku-rclone/bin:$PATH"
           for arch in x86_64 aarch64; do
+            # An arch that published keeps its published status.
+            ./bin/ryoku-ci-jobs-passed "Publish the [ryoku] repo ($arch)" 2>/dev/null && continue
             if [[ $CHANNEL == stable ]]; then
               ./bin/ryoku-channel-status "Ryoku:$R2_BUCKET/$arch" failed "$GITHUB_SHA" \
                 --channel "$CHANNEL" --release "$RELEASE" \
