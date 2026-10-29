@@ -1,6 +1,8 @@
 package main
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -166,6 +168,34 @@ func TestLaneFor(t *testing.T) {
 		if got := laneFor(c.d, c.machine); got != c.want {
 			t.Errorf("laneFor(%v, %q) with served=%v = %v, want %v", c.d, c.machine, c.served, got, c.want)
 		}
+	}
+}
+
+func TestRepoDBServed(t *testing.T) {
+	old := repoProbeRetry
+	repoProbeRetry = 0
+	t.Cleanup(func() { repoProbeRetry = old })
+	cases := []struct {
+		name   string
+		status []int
+		want   bool
+	}{
+		{"published", []int{200}, true},
+		{"not published", []int{404}, false},
+		{"recovers", []int{503, 200}, true},
+		{"recovers to missing", []int{502, 404}, false},
+		{"never answers", []int{503, 503, 503}, true},
+	}
+	for _, c := range cases {
+		calls := 0
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(c.status[min(calls, len(c.status)-1)])
+			calls++
+		}))
+		if got := repoDBServed(srv.Client(), srv.URL+"/ryoku.db"); got != c.want {
+			t.Errorf("%s: repoDBServed = %v, want %v", c.name, got, c.want)
+		}
+		srv.Close()
 	}
 }
 

@@ -98,16 +98,42 @@ var archSource = &distro{
 var installRef = "main"
 
 // archRepoServes reports whether the [ryoku] channel for ref publishes a
-// database for machine.
+// database for machine. Detection asks more than once, so the answer is kept.
 var archRepoServes = func(ref, machine string) bool {
+	key := ref + " " + machine
+	if served, ok := repoServesSeen[key]; ok {
+		return served
+	}
 	_, server := channelForRef(ref)
 	client := &http.Client{Timeout: 6 * time.Second}
-	resp, err := client.Head(strings.Replace(server, "$arch", machine, 1) + "/ryoku.db")
-	if err != nil {
-		return false
+	served := repoDBServed(client, strings.Replace(server, "$arch", machine, 1)+"/ryoku.db")
+	repoServesSeen[key] = served
+	return served
+}
+
+var repoServesSeen = map[string]bool{}
+
+var repoProbeRetry = 2 * time.Second
+
+// repoDBServed asks for a channel's database. Only the server's own answer
+// settles it: a network error or a 5xx right after the network comes up is
+// asked again, and one that never clears counts as served, so the repo lane
+// fails loudly instead of quietly building the desktop from source.
+func repoDBServed(client *http.Client, url string) bool {
+	for attempt := 0; attempt < 3; attempt++ {
+		if attempt > 0 {
+			time.Sleep(repoProbeRetry)
+		}
+		resp, err := client.Head(url)
+		if err != nil {
+			continue
+		}
+		resp.Body.Close()
+		if resp.StatusCode < 500 {
+			return resp.StatusCode == http.StatusOK
+		}
 	}
-	resp.Body.Close()
-	return resp.StatusCode == http.StatusOK
+	return true
 }
 
 // laneFor picks how a detected distro installs on this machine: Arch off
