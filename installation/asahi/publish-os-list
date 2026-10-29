@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# publish-os-list: publishes one edition's entry in a channel's Asahi OS list.
+#
+#   publish-os-list <rclone remote> <channel> <edition> <entry list JSON>
+#
+# Uploads the entry to asahi/<channel>/os-list/<edition>.json, rebuilds
+# asahi/<channel>/installer_data.json from every edition's entry there, and
+# uploads bootstrap.sh beside the channels. The Fedora publish and the Arch
+# Linux ARM image build each call it for their own edition.
+set -euo pipefail
+
+remote=${1:?rclone remote}
+channel=${2:?channel}
+edition=${3:?edition}
+entry=${4:?entry list JSON}
+here=$(cd "$(dirname "$0")" && pwd)
+list=$(mktemp -d)
+trap 'rm -rf "$list"' EXIT
+
+rclone copyto "$entry" "$remote/asahi/$channel/os-list/$edition.json"
+rclone copy "$remote/asahi/$channel/os-list/" "$list/" --include '*.json'
+"$here/installer-data" merge "$list"/*.json >"$list/installer_data.json"
+rclone copyto "$list/installer_data.json" "$remote/asahi/$channel/installer_data.json"
+rclone copyto "$here/bootstrap.sh" "$remote/asahi/bootstrap.sh"

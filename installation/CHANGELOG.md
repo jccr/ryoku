@@ -11,6 +11,12 @@
   project's pinned, checked installer against Ryoku's OS list, which
   `asahi/installer-data` builds from the official Fedora Asahi Remix 44 Minimal
   entry plus the first-boot RPM; the Fedora publish workflow uploads both.
+- **The Asahi installer can offer Ryoku on Arch Linux ARM.** `asahi/image/`
+  builds a btrfs Arch Linux ARM image with the asahi-alarm kernel and boot
+  chain and the first-boot wizard built in, with no default logins; the
+  Arch backend sets the locale through `locale.gen`. `build-asahi-image.yml`
+  publishes it, and each edition now writes its own OS list entry, merged into
+  one `installer_data.json` (`asahi/installer-data`, `asahi/publish-os-list`).
 - **The installer TUI can finish a system that is already installed.** Its
   `asahi` variant skips the hardware, disk and encryption steps, offers the
   Fedora edition's choices, and hands the keyboard, locale, time zone,

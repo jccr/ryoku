@@ -2,32 +2,40 @@
 
 The first boot of an Apple Silicon Mac. A Mac cannot boot an ISO first: the
 Asahi installer runs in macOS, makes room, sets up the boot chain and lays down
-an OS image. Ryoku's entry in the installer's OS list uses the official Fedora
-Asahi Remix 44 Minimal image, unchanged, plus one extra package. Ryoku ships no
-Fedora image of its own, which keeps it clear of the Fedora Remix trademark
-conditions that retired the Fedora ISO.
+an OS image. Ryoku's OS list offers two entries:
+
+- **Ryoku on Fedora Asahi Remix 44 Minimal** uses the official Fedora image,
+  unchanged, plus one extra package. Ryoku ships no Fedora image of its own,
+  which keeps it clear of the Fedora Remix trademark conditions that retired
+  the Fedora ISO.
+- **Ryoku on Arch Linux ARM** is Ryoku's own image (`image/`): the signed Arch
+  Linux ARM tarball with the asahi-alarm kernel and boot chain on a btrfs root,
+  and the same first-boot setup built in.
 
 ## How a first boot goes
 
-1. The Asahi installer copies the entry's `extras` to the EFI partition
-   (`/boot/efi/asahi/extras/`).
-2. On first boot Fedora's `asahi-extras-firstboot.service` installs every RPM
-   there, offline: `ryoku-asahi-firstboot`
-   (`fedora/packages/rpm/ryoku-asahi-firstboot.spec`).
-3. Its `%post` disables `initial-setup` and starts `ryoku-firstboot.service`,
-   which runs `ryoku-firstboot-session` on tty1.
-4. The session starts `ryoku-tui` in its `asahi` variant on the kernel console:
-   keyboard, locale, time zone, network, desktop choices, Apps & tools,
-   hostname and the accounts, then Review (`installation/tui/README.md`).
-5. The wizard hands its answers to `ryoku-firstboot-install`, which sets the
+1. Fedora: the Asahi installer copies the entry's `extras` to the EFI partition
+   (`/boot/efi/asahi/extras/`), and Fedora's `asahi-extras-firstboot.service`
+   installs every RPM there, offline: `ryoku-asahi-firstboot`
+   (`fedora/packages/rpm/ryoku-asahi-firstboot.spec`). Its `%post` disables
+   `initial-setup` and starts `ryoku-firstboot.service`.
+   Arch Linux ARM: the image already has the package
+   (`release/packages/ryoku-asahi-firstboot/`) and the service enabled.
+2. `ryoku-firstboot.service` runs `ryoku-firstboot-session` on tty1.
+3. The session starts `ryoku-tui` in its preinstalled variant (`asahi` or
+   `asahi-alarm`) on the kernel console: keyboard, locale, time zone, network,
+   desktop choices, Apps & tools, hostname and the accounts, then Review
+   (`installation/tui/README.md`).
+4. The wizard hands its answers to `ryoku-firstboot-install`, which sets the
    running system up and installs the desktop with `ryoku-shell-install` as the
    administrator, from the branch in `/usr/share/ryoku-asahi/ref`. Unticked
    apps reach it as `--without`, so it leaves them out, records them for the
    doctor and hides them, as an ISO install does.
-6. Setup disables the service and the wizard reboots into SDDM.
+5. Setup disables the service and the wizard reboots into SDDM.
 
 Leaving the wizard before setup finishes brings it back: until then the Mac has
-no account to log in with.
+no account to log in with. The Arch Linux ARM image has no `alarm` account and
+a locked root; the wizard creates the only logins.
 
 ## Files
 
@@ -35,17 +43,28 @@ no account to log in with.
 | --- | --- |
 | `ryoku-firstboot.service` | Takes tty1 from `initial-setup` and `getty@tty1` until setup is done. |
 | `ryoku-firstboot-session` | Starts the wizard with this backend and restarts it until setup finishes. |
-| `ryoku-firstboot-install` | The backend: system settings, accounts, desktop, finish. |
-| `installer-data` | Writes the Asahi installer OS list: the Asahi project's Minimal entry, renamed, with the first-boot RPM as its extra. |
+| `ryoku-firstboot-install` | The backend: system settings, accounts, desktop, finish, with dnf or pacman by variant. |
+| `image/build.sh` | Builds the Arch Linux ARM image: verifies the tarball, runs `setup.sh` in it, packs the btrfs root and the EFI tree into the installer's zip. |
+| `image/setup.sh` | Runs inside the image root: asahi-alarm repository, kernel, m1n1, GRUB, fstab, accounts, the first-boot package. |
+| `installer-data` | Writes each edition's OS list entry, and merges the entries into one `installer_data.json`. |
+| `publish-os-list` | Uploads one edition's entry and rebuilds the channel's OS list from all of them. |
 | `bootstrap.sh` | The macOS entry point: Asahi's `bootstrap-prod.sh` with Ryoku's OS list, a pinned and checked installer release, and no install report. |
 
 ## Publishing
 
-The Fedora publish workflow builds `ryoku-asahi-firstboot` on its aarch64 leg.
-After the Fedora 44 aarch64 repository publishes, it writes
-`asahi/<channel>/installer_data.json`, pointing the extra at that release's
-frozen repository, and uploads `asahi/bootstrap.sh` beside it. A Mac then
-installs with:
+Each edition publishes its own entry to `asahi/<channel>/os-list/`, and
+`publish-os-list` rebuilds `asahi/<channel>/installer_data.json` from all of
+them, so neither publish drops the other:
+
+- The Fedora publish workflow builds `ryoku-asahi-firstboot` on its aarch64 leg
+  and, after the Fedora 44 aarch64 repository publishes, writes the Fedora
+  entry with the extra pointing at that release's frozen repository.
+- `build-asahi-image.yml` builds the first-boot package and the image on an arm
+  runner, uploads it to `asahi/<channel>/os/` with its `.sha256`, keeps the
+  previous image for installs already under way, and writes the Arch Linux ARM
+  entry.
+
+Both upload `asahi/bootstrap.sh` beside the channels. A Mac then installs with:
 
 ```sh
 curl -fsSL https://ryoku-repo.jccr.dev/stable/asahi/bootstrap.sh | RYOKU_CHANNEL=testing sh
@@ -54,14 +73,15 @@ curl -fsSL https://ryoku-repo.jccr.dev/stable/asahi/bootstrap.sh | RYOKU_CHANNEL
 To review it first, download `bootstrap.sh`, read it, then run `sh bootstrap.sh`.
 A new Asahi installer release needs `PKG_VER` and `PKG_SHA256` bumped there.
 
-`tests/asahi-firstboot-dryrun.sh` dry-runs the backend and checks its package
-stages every library it sources.
+`tests/asahi-firstboot-dryrun.sh` dry-runs the backend for both editions and
+checks the package stages every library it sources.
 
 ## Limits of this first pass
 
-- The wizard runs on the console, not in `cage`: the extras install before the
-  network is up, so the package needs nothing Minimal lacks.
+- The wizard runs on the console, not in `cage`: the Fedora extra installs
+  before the network is up, so the package needs nothing Minimal lacks.
 - The OS list is rebuilt each publish, so the bootstrap cannot pin its checksum;
-  the installer it runs is pinned.
-- `initial-setup` may already be on tty1 when the extras land; the service
-  conflicts with it and takes the console over. This needs a real Mac to prove.
+  the installer it runs is pinned. The image's `.sha256` is not signed yet.
+- `initial-setup` may already be on tty1 when the Fedora extra lands; the
+  service conflicts with it and takes the console over.
+- The Arch Linux ARM image has no snapshot boot yet: GRUB boots `@` only.

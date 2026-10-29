@@ -1,0 +1,145 @@
+name: Build the Asahi Arch Linux ARM image
+
+# Builds Ryoku's Arch Linux ARM image for Apple Silicon Macs
+# (installation/asahi/image/) and adds it to the channel's Asahi installer OS
+# list beside the Fedora Asahi Remix entry:
+#
+#   asahi/<channel>/os/ryoku-alarm-<stamp>.zip   the image, its .sha256 and .json
+#   asahi/<channel>/os-list/alarm.json           this edition's OS list entry
+#   asahi/<channel>/installer_data.json          every edition's entries
+#
+# A v* tag publishes stable, a push to unstable-dev that touches the image or its
+# first boot publishes testing. The image carries only the first-boot wizard;
+# the desktop installs from the channel's [ryoku] repo on first boot.
+on:
+  push:
+    branches:
+      - unstable-dev
+    paths:
+      - 'installation/asahi/**'
+      - 'installation/tui/**'
+      - 'installation/backend/lib/**'
+      - 'release/packages/ryoku-asahi-firstboot/**'
+      - 'ryoku-shell-installer/ryoku-shell-install-aarch64'
+      - '.github/workflows/build-asahi-image.yml'
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: asahi-image-${{ github.ref_type == 'tag' && 'stable' || 'testing' }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+jobs:
+  image:
+    name: Build and publish the image
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 90
+    # arch-chroot, pacman and makepkg need Arch Linux ARM; the btrfs root image
+    # is packed through a loop device, which needs a privileged container.
+    container:
+      image: docker.io/menci/archlinuxarm:latest
+      options: --privileged
+    env:
+      PUBLIC_BASE: https://repo.ryoku.dev/stable
+    steps:
+      - name: Verify required secrets are present
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [[ -z "$R2_ACCESS_KEY_ID" ]]     && missing+=("R2_ACCESS_KEY_ID")
+          [[ -z "$R2_SECRET_ACCESS_KEY" ]] && missing+=("R2_SECRET_ACCESS_KEY")
+          [[ -z "$R2_ENDPOINT" ]]          && missing+=("R2_ENDPOINT")
+          [[ -z "$R2_BUCKET" ]]            && missing+=("R2_BUCKET")
+          if (( ${#missing[@]} > 0 )); then
+            echo "::error::Missing required secrets: ${missing[*]}"
+            exit 1
+          fi
+
+      # pacman's Landlock sandbox cannot start in a container, and the Arch
+      # Linux ARM image ships an uninitialized keyring.
+      - name: Install the image tools
+        run: |
+          sed -i '/^\[options\]/a DisableSandbox' /etc/pacman.conf
+          pacman-key --init
+          pacman-key --populate archlinuxarm
+          pacman -Syu --noconfirm --needed arch-install-scripts base-devel btrfs-progs \
+            git gnupg go jq rclone rsync zip
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          # bin/ryoku-release-version counts commits for the package version.
+          fetch-depth: 0
+
+      - name: Resolve the channel
+        id: channel
+        run: |
+          set -euo pipefail
+          case "$GITHUB_REF" in
+            refs/tags/v*) echo "channel=stable" >> "$GITHUB_OUTPUT" ;;
+            refs/heads/unstable-dev) echo "channel=testing" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "::error::the Asahi image builds on a v* tag (stable) or unstable-dev (testing); got $GITHUB_REF"
+              exit 1
+              ;;
+          esac
+
+      - name: Build the first-boot package
+        env:
+          RYOKU_CHANNEL: ${{ steps.channel.outputs.channel }}
+        run: |
+          set -euo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          RYOKU_PKGVER=$(./bin/ryoku-release-version --pkgver)
+          useradd --create-home builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          runuser -u builder -- env RYOKU_PKGVER="$RYOKU_PKGVER" RYOKU_CHANNEL="$RYOKU_CHANNEL" \
+            bash -c 'cd release/packages/ryoku-asahi-firstboot && makepkg --force --clean --nodeps --noconfirm'
+
+      - name: Build the image
+        run: |
+          set -euo pipefail
+          pkg=$(ls release/packages/ryoku-asahi-firstboot/ryoku-asahi-firstboot-*.pkg.tar.*)
+          installation/asahi/image/build.sh "$pkg" "$RUNNER_TEMP/asahi-image"
+
+      - name: Publish the image and the OS list
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          CHANNEL: ${{ steps.channel.outputs.channel }}
+        run: |
+          set -euo pipefail
+          ./bin/ryoku-r2-config
+          export PATH="$HOME/.local/share/ryoku-rclone/bin:$PATH"
+          remote="Ryoku:$R2_BUCKET"
+          out="$RUNNER_TEMP/asahi-image"
+          meta=$(ls "$out"/ryoku-alarm-*.json)
+          name=$(jq -r .package "$meta")
+          # The image lands before the OS list names it, so the list never
+          # points at a zip that is still uploading.
+          rclone copy "$out/" "$remote/asahi/$CHANNEL/os/" -P
+          installation/asahi/installer-data alarm "$CHANNEL" \
+            "$PUBLIC_BASE/asahi/$CHANNEL/os/$name" "$meta" > "$RUNNER_TEMP/asahi-alarm.json"
+          installation/asahi/publish-os-list "$remote" "$CHANNEL" alarm "$RUNNER_TEMP/asahi-alarm.json"
+          # Keep the previous image too: an installer that read the old list
+          # may still be downloading it.
+          rclone lsf "$remote/asahi/$CHANNEL/os/" --include 'ryoku-alarm-*.zip' | sort -r | tail -n +3 \
+            | while read -r old; do
+                rclone deletefile "$remote/asahi/$CHANNEL/os/$old"
+                rclone deletefile "$remote/asahi/$CHANNEL/os/$old.sha256" || :
+                rclone deletefile "$remote/asahi/$CHANNEL/os/${old%.zip}.json" || :
+              done

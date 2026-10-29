@@ -634,9 +634,8 @@ jobs:
           shopt -s nullglob
           rpms=("$RUNNER_TEMP/fedora-repo-artifact/aarch64"/ryoku-asahi-firstboot-*.rpm)
           ((${#rpms[@]} == 1)) || { echo '::error::Expected one ryoku-asahi-firstboot RPM'; exit 1; }
-          installation/asahi/installer-data "$CHANNEL" "$PUBLIC_BASE/$FROZEN/${rpms[0]##*/}" > "$RUNNER_TEMP/installer_data.json"
-          rclone copyto "$RUNNER_TEMP/installer_data.json" "$REMOTE/asahi/$CHANNEL/installer_data.json" -P
-          rclone copyto installation/asahi/bootstrap.sh "$REMOTE/asahi/bootstrap.sh" -P
+          installation/asahi/installer-data fedora "$CHANNEL" "$PUBLIC_BASE/$FROZEN/${rpms[0]##*/}" > "$RUNNER_TEMP/asahi-fedora.json"
+          installation/asahi/publish-os-list "$REMOTE" "$CHANNEL" fedora "$RUNNER_TEMP/asahi-fedora.json"
 
       - name: Mark the channel build as published
         env:

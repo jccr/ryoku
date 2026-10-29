@@ -1,22 +1,80 @@
 #!/usr/bin/env bash
-# installer-data: writes the Asahi installer OS list that offers Ryoku.
+# installer-data: writes the Asahi installer OS lists that offer Ryoku.
 #
-#   installer-data <channel> <first-boot RPM URL> > installer_data.json
+#   installer-data fedora <channel> <first-boot RPM URL>    > fedora.json
+#   installer-data alarm <channel> <image URL> <image JSON> > alarm.json
+#   installer-data merge <entry list>...                    > installer_data.json
 #
-# The entry is the Asahi project's own Fedora Asahi Remix 44 Minimal entry,
-# image and partitions unchanged, with the Ryoku name and the first-boot RPM as
-# its one extra. The image still downloads from the Asahi project.
+# Each edition publishes its own entry list, and merge joins them into the one
+# OS list a channel serves, so neither publish drops the other's entry.
+#
+# The Fedora entry is the Asahi project's own Fedora Asahi Remix 44 Minimal
+# entry, image and partitions unchanged, with the Ryoku name and the first-boot
+# RPM as its one extra; the image still downloads from the Asahi project.
+#
+# The Arch Linux ARM entry is Ryoku's own image (image/build.sh): its JSON
+# names the zip, the root image size and the EFI volume ID. The boot objects
+# and supported firmware follow the Asahi project's Fedora entry, which tracks
+# what the installer supports.
 set -euo pipefail
 
-channel=${1:?channel (stable or testing)}
-rpm_url=${2:?first-boot RPM URL}
 upstream=${RYOKU_ASAHI_UPSTREAM_DATA:-https://github.com/AsahiLinux/asahi-installer-data/raw/prod/data/installer_data.json}
-base_name='Fedora Asahi Remix 44 Minimal'
+fedora_base='Fedora Asahi Remix 44 Minimal'
 
-name="Ryoku on $base_name"
-[[ $channel == stable ]] || name+=" ($channel)"
+usage() {
+  sed -n '4,6s/^# //p' "$0" >&2
+  exit 2
+}
 
-curl -fsSL --retry 3 "$upstream" | jq --arg base "$base_name" --arg name "$name" --arg rpm "$rpm_url" '
-  [.os_list[] | select(.name == $base)] as $found
-  | if ($found | length) != 1 then error("the Asahi OS list has no single \($base) entry") else . end
-  | {os_list: [$found[0] | .name = $name | .default_os_name = "Ryoku" | .extras = [$rpm]]}'
+upstream_fedora() {
+  curl -fsSL --retry 3 "$upstream" | jq --arg base "$fedora_base" '
+    [.os_list[] | select(.name == $base)] as $found
+    | if ($found | length) != 1 then error("the Asahi OS list has no single \($base) entry") else $found[0] end'
+}
+
+entry_name() {
+  local name=$1 channel=$2
+  [[ $channel == stable ]] || name+=" ($channel)"
+  printf '%s\n' "$name"
+}
+
+fedora() {
+  local channel=${1:?channel (stable or testing)} rpm_url=${2:?first-boot RPM URL}
+  upstream_fedora | jq --arg name "$(entry_name "Ryoku on $fedora_base" "$channel")" --arg rpm "$rpm_url" '
+    {os_list: [.name = $name | .default_os_name = "Ryoku" | .extras = [$rpm]]}'
+}
+
+alarm() {
+  local channel=${1:?channel (stable or testing)} image_url=${2:?image URL} image=${3:?image JSON}
+  upstream_fedora | jq --arg name "$(entry_name 'Ryoku on Arch Linux ARM' "$channel")" \
+    --arg url "$image_url" --slurpfile image "$image" '
+    $image[0] as $img
+    | {os_list: [{
+        name: $name,
+        default_os_name: "Ryoku",
+        boot_object: .boot_object,
+        next_object: .next_object,
+        package: $url,
+        supported_fw: .supported_fw,
+        extras: [],
+        partitions: [
+          {name: "EFI", type: "EFI", size: "524288000B", format: "fat",
+           volume_id: $img.efi_volume_id, copy_firmware: true,
+           copy_installer_data: true, source: "esp"},
+          {name: "Root", type: "Linux", size: "\($img.root_bytes)B",
+           expand: true, image: "root.img"}
+        ]
+      }]}'
+}
+
+merge() {
+  (($# > 0)) || usage
+  jq -s '{os_list: ([.[].os_list[]] | sort_by(.name))}' "$@"
+}
+
+command=${1:-}
+shift || :
+case $command in
+  fedora | alarm | merge) "$command" "$@" ;;
+  *) usage ;;
+esac
