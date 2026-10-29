@@ -122,6 +122,7 @@ NAME=$name
 CHANNEL=$channel
 VERSION=$pkgver
 COMMIT=$commit
+REF=${RYOKU_REF:-}
 DATE=$(date -u -d "@$SOURCE_DATE_EPOCH" +%Y-%m-%dT%H:%M:%SZ)
 META
 

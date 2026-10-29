@@ -14,12 +14,14 @@ RELEASE=
 NAME=
 CHANNEL=
 COMMIT=
+REF=
 # shellcheck disable=SC1091
 source "$root/.rpm-release"
 export RYOKU_RELEASE=$RELEASE
 export RYOKU_NAME=$NAME
 export RYOKU_CHANNEL=$CHANNEL
 export RYOKU_COMMIT=$COMMIT
+export RYOKU_REF=$REF
 # The payload recipe is Fedora release input. It stages files only: no host
 # installation hooks run while building an RPM.
 recipe="$startdir/$name.sh"

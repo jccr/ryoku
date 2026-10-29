@@ -105,7 +105,7 @@ jobs:
           RYOKU_PKGVER=$(./bin/ryoku-release-version --pkgver)
           useradd --create-home builder
           chown -R builder:builder "$GITHUB_WORKSPACE"
-          runuser -u builder -- env RYOKU_PKGVER="$RYOKU_PKGVER" RYOKU_CHANNEL="$RYOKU_CHANNEL" \
+          runuser -u builder -- env RYOKU_PKGVER="$RYOKU_PKGVER" RYOKU_CHANNEL="$RYOKU_CHANNEL" RYOKU_REF="$GITHUB_REF_NAME" \
             bash -c 'cd release/packages/ryoku-asahi-firstboot && makepkg --force --clean --nodeps --noconfirm'
 
       - name: Build the image

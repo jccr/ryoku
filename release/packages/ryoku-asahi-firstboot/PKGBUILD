@@ -28,5 +28,6 @@ package() {
   RYOKU_SRC="$_repo" \
   RYOKU_BUILD_DIR="$srcdir" \
   RYOKU_CHANNEL="${RYOKU_CHANNEL:-stable}" \
+  RYOKU_REF="${RYOKU_REF:-}" \
     "$startdir/payload.sh" install "$pkgdir" systemd arch
 }

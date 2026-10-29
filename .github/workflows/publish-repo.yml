@@ -334,6 +334,7 @@ jobs:
             RYOKU_REPO_MIRROR="$GITHUB_WORKSPACE/.published-mirror" \
             RYOKU_RELEASE="$RYOKU_RELEASE" \
             RYOKU_CHANNEL="$RYOKU_CHANNEL" \
+            RYOKU_REF="$GITHUB_REF_NAME" \
             RYOKU_REPO_ARCH="${{ matrix.arch }}" \
             bash -euo pipefail -c '
               export GNUPGHOME="$(mktemp -d)"

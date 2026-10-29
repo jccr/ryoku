@@ -14,9 +14,10 @@ usage() {
 
 # The channel this package was built for picks the branch the first boot
 # installs the desktop from, so the setup and the desktop come from one channel.
+# A testing build installs from the branch that published it (RYOKU_REF).
 ref() {
 	case ${RYOKU_CHANNEL:-} in
-	testing) printf 'aarch64-phase6\n' ;;
+	testing) printf '%s\n' "${RYOKU_REF:-unstable-dev}" ;;
 	*) printf 'main\n' ;;
 	esac
 }
