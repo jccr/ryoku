@@ -2080,7 +2080,7 @@ func stepPackages(e *engine) error {
 	pkgs = e.dropSatisfied(pkgs)
 	// off x86_64 the sync databases lack some names (x86-only firmware, the
 	// limine tools), whether the desktop builds from source or not
-	if d == archSource || (d.id == "arch" && e.f.machine != "x86_64") {
+	if d.id == "arch" && e.f.machine != "x86_64" {
 		pkgs = e.dropUnresolvable(pkgs)
 	}
 	if d.id == "arch" {
