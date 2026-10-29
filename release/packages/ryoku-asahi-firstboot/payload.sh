@@ -16,7 +16,7 @@ usage() {
 # installs the desktop from, so the setup and the desktop come from one channel.
 ref() {
 	case ${RYOKU_CHANNEL:-} in
-	testing) printf 'aarch64-phase4a\n' ;;
+	testing) printf 'aarch64-phase6\n' ;;
 	*) printf 'main\n' ;;
 	esac
 }

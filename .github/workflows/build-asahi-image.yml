@@ -15,6 +15,8 @@ on:
   push:
     branches:
       - unstable-dev
+      # the fork publishes its aarch64 work in progress to its own testing channel
+      - 'aarch64-phase*'
     paths:
       - 'installation/asahi/**'
       - 'installation/tui/**'
@@ -44,7 +46,7 @@ jobs:
       image: docker.io/menci/archlinuxarm:latest
       options: --privileged
     env:
-      PUBLIC_BASE: https://repo.ryoku.dev/stable
+      PUBLIC_BASE: https://ryoku-repo.jccr.dev/stable
     steps:
       - name: Verify required secrets are present
         env:
@@ -87,7 +89,7 @@ jobs:
           set -euo pipefail
           case "$GITHUB_REF" in
             refs/tags/v*) echo "channel=stable" >> "$GITHUB_OUTPUT" ;;
-            refs/heads/unstable-dev) echo "channel=testing" >> "$GITHUB_OUTPUT" ;;
+            refs/heads/unstable-dev|refs/heads/aarch64-phase*) echo "channel=testing" >> "$GITHUB_OUTPUT" ;;
             *)
               echo "::error::the Asahi image builds on a v* tag (stable) or unstable-dev (testing); got $GITHUB_REF"
               exit 1
