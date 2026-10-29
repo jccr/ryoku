@@ -3,8 +3,9 @@
 #
 # ryoku-firstboot-install: the backend ryoku-tui hands its answers to on a Mac.
 #
-# The Asahi installer has already laid Fedora Asahi Remix on the disk, so there
-# is nothing to partition: this sets the keyboard, locale, time zone and
+# The Asahi installer has already laid the system on the disk (Fedora Asahi
+# Remix, or Ryoku's Arch Linux ARM image), so there is nothing to partition:
+# this sets the keyboard, locale, time zone and
 # hostname of the running system, creates the planned accounts with the ISO
 # backends' lib/accounts.sh, and installs the desktop with ryoku-shell-install
 # as the administrator. Answers arrive in the RYOKU_* environment documented in
@@ -28,14 +29,38 @@ set -euo pipefail
 : "${RYOKU_TIMEZONE:=UTC}"
 : "${RYOKU_LOGIN_SHELL:=bash}"
 : "${RYOKU_RASHIN:=1}"
+# asahi on Fedora Asahi Remix, asahi-alarm on Arch Linux ARM.
+: "${RYOKU_VARIANT:=$(cat /usr/share/ryoku/variant 2>/dev/null || printf asahi)}"
 export RYOKU_TARGET_ROOT=/ RYOKU_TARGET_CHROOT=chroot
 
 # shellcheck source=../backend/lib/common.sh
 source "$RYOKU_BACKEND_LIB/common.sh"
 # shellcheck source=../backend/lib/accounts.sh
 source "$RYOKU_BACKEND_LIB/accounts.sh"
+# shellcheck source=../backend/lib/chroot.sh
+source "$RYOKU_BACKEND_LIB/chroot.sh"
 
 sudoers=/etc/sudoers.d/90-ryoku-firstboot
+
+install_packages() {
+  if [[ $RYOKU_VARIANT == asahi-alarm ]]; then
+    run pacman -S --needed --noconfirm "$@"
+  else
+    run dnf -y install "$@"
+  fi
+}
+
+# Fedora ships each language's locale data in its own langpack; Arch generates
+# it from locale.gen, as the ISO install does.
+firstboot_locale() {
+  if [[ $RYOKU_VARIANT == asahi-alarm ]]; then
+    ryoku_cfg_locale
+    return
+  fi
+  log 'locale: %s' "$RYOKU_LOCALE"
+  install_packages "glibc-langpack-${RYOKU_LOCALE%%_*}"
+  run localectl set-locale "LANG=$RYOKU_LOCALE"
+}
 
 firstboot_system() {
   step system
@@ -43,10 +68,7 @@ firstboot_system() {
   log 'keyboard: %s (%s%s)' "$RYOKU_KEYMAP" "$xkbl" "${xkbv:+ $xkbv}"
   run localectl set-keymap "$RYOKU_KEYMAP"
   run localectl set-x11-keymap "$xkbl" "" "$xkbv"
-  # Fedora ships each language's locale data in its own langpack.
-  log 'locale: %s' "$RYOKU_LOCALE"
-  run dnf -y install "glibc-langpack-${RYOKU_LOCALE%%_*}"
-  run localectl set-locale "LANG=$RYOKU_LOCALE"
+  firstboot_locale
   ryoku_resolve_timezone "$RYOKU_TIMEZONE"
   log 'timezone: %s' "$RYOKU_RESOLVED_TIMEZONE"
   run timedatectl set-timezone "$RYOKU_RESOLVED_TIMEZONE"
@@ -57,7 +79,7 @@ firstboot_system() {
 firstboot_accounts() {
   step accounts
   # The accounts are created with their login shell, so it lands first.
-  run dnf -y install "$RYOKU_LOGIN_SHELL"
+  install_packages "$RYOKU_LOGIN_SHELL"
   ryoku_accounts_create
 }
 
