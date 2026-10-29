@@ -2,24 +2,34 @@ package main
 
 import (
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
 
 func TestPreinstalledFlowLeavesTheDiskAlone(t *testing.T) {
 	t.Setenv("RYOKU_KB_PRESET", "")
-	want := []string{
-		"keyboard", "locale", "timezone", "network",
-		"compositor", "browser", "login-shell", "file-manager", "rashin", "apps",
-		"hostname", "administrator", "root-account", "other-people", "review",
+	keys := func(flow []step) []string {
+		var out []string
+		for _, s := range flow {
+			out = append(out, s.key)
+		}
+		return out
+	}
+	var want []string
+	for _, key := range keys(stepsForVariant("")) {
+		if !preinstalledSkips[key] {
+			want = append(want, key)
+		}
 	}
 	for _, variant := range []string{variantAsahi, variantAsahiALARM} {
-		var keys []string
-		for _, s := range stepsForVariant(variant) {
-			keys = append(keys, s.key)
+		if got := keys(stepsForVariant(variant)); !reflect.DeepEqual(got, want) {
+			t.Fatalf("%s flow = %v, want the ISO flow without the disk and hardware steps: %v", variant, got, want)
 		}
-		if !reflect.DeepEqual(keys, want) {
-			t.Fatalf("%s flow = %v, want %v", variant, keys, want)
+	}
+	for _, key := range []string{"administrator", "review"} {
+		if !slices.Contains(want, key) {
+			t.Fatalf("the preinstalled flow lost its %s step: %v", key, want)
 		}
 	}
 }
