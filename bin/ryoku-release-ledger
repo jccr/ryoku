@@ -4,7 +4,10 @@
 # Stable ledgers are derived from <prefix>releases/<tag>/<arch>/release.json
 # and include matching ISO images. Testing ledgers are derived from
 # <prefix>channels/testing/builds/<dir>/<arch>/release.json and never include
-# images. <arch> is x86_64, or aarch64 for a build that has no x86_64 tree. Both are newest first by date, and `latest` is the newest release.
+# images. Both are newest first by date, and `latest` is the newest release.
+# A release is listed once its x86_64 tree is complete. The publish workflows
+# run this only after every arch published, so a release one arch failed is
+# never offered to the others.
 #
 # Publish workflows run this after a frozen repository lands and
 # release-ledger.yml runs it on demand, so a ledger that was lost, truncated, or
@@ -146,14 +149,7 @@ fi
 entries=()
 for directory in "${directories[@]}"; do
   metadata="$tmp/$directory.json"
-  build_arch=
-  for arch in x86_64 aarch64; do
-    if rclone cat "$remote/$release_root/$directory/$arch/release.json" > "$metadata" 2>/dev/null && [[ -s "$metadata" ]]; then
-      build_arch=$arch
-      break
-    fi
-  done
-  if [[ -z $build_arch ]]; then
+  if ! rclone cat "$remote/$release_root/$directory/x86_64/release.json" > "$metadata" 2>/dev/null || [[ ! -s "$metadata" ]]; then
     echo "ryoku-release-ledger: $directory has no release.json; skipped" >&2
     continue
   fi
@@ -165,7 +161,7 @@ for directory in "${directories[@]}"; do
   else
     tag=$directory
   fi
-  entries+=("$(jq -c --arg tag "$tag" --arg repo "$release_root/$directory/$build_arch" \
+  entries+=("$(jq -c --arg tag "$tag" --arg repo "$release_root/$directory/x86_64" \
     '{tag: $tag, name: (.name // ""), version: .version, commit: .commit, date: .date, repo: $repo}' "$metadata")")
 done
 

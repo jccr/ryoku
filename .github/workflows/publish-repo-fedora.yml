@@ -599,7 +599,6 @@ jobs:
           if [[ $CHANNEL == stable ]]; then
             frozen="$base/releases/$RELEASE/${{ matrix.arch }}"
             head="$base/${{ matrix.arch }}"
-            ledger_channel=stable
             if [[ $FORCE_RELEASE != true ]]; then
               existing=$(rclone lsf "$frozen/" 2>/dev/null || true)
               if [[ -n $existing ]]; then
@@ -611,7 +610,6 @@ jobs:
             directory=${RELEASE//+/_}
             frozen="$base/channels/testing/builds/$directory/${{ matrix.arch }}"
             head="$base/channels/testing/${{ matrix.arch }}"
-            ledger_channel=testing
           fi
 
           publish() {
@@ -627,11 +625,6 @@ jobs:
 
           publish "$src" "$frozen"
           publish "$src" "$head"
-          ledger=$(./bin/ryoku-release-ledger "$REMOTE" "fedora/${{ matrix.release }}" "$ledger_channel")
-          jq -e --arg release "$RELEASE" '.latest == $release' <<< "$ledger" >/dev/null || {
-            echo "::error::Fedora ${{ matrix.release }} $ledger_channel ledger does not list $RELEASE as latest"
-            exit 1
-          }
           rclone copyto fedora/releases "$REMOTE/fedora/releases" -P
           echo "::notice::Published Fedora ${{ matrix.release }} $CHANNEL release $RELEASE"
           printf 'frozen=%s\n' "${frozen#"$REMOTE/"}" >> "$GITHUB_OUTPUT"
@@ -673,9 +666,61 @@ jobs:
             --release "$RELEASE" \
             --run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
+  # A Fedora release's ledger speaks for every arch, so it is rebuilt once, after
+  # every arch of that release published.
+  record:
+    name: "Record the release (Fedora ${{ matrix.release }})"
+    needs: [prepare, publish]
+    if: ${{ !cancelled() && needs.prepare.result == 'success' && needs.publish.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        release: ${{ fromJSON(needs.prepare.outputs.releases) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Require every arch's publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: ./bin/ryoku-ci-jobs-passed "Publish RPM repo (Fedora ${{ matrix.release }}, "
+
+      - name: Install ledger tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rclone jq
+
+      - name: Configure bucket
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: ./bin/ryoku-r2-config
+
+      - name: Rebuild the ledger
+        env:
+          CHANNEL: ${{ needs.prepare.outputs.channel }}
+          RELEASE: ${{ needs.prepare.outputs.release }}
+          REMOTE: Ryoku:${{ secrets.R2_BUCKET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ledger=$(./bin/ryoku-release-ledger "$REMOTE" "fedora/${{ matrix.release }}" "$CHANNEL")
+          jq -e --arg release "$RELEASE" '.latest == $release' <<< "$ledger" >/dev/null || {
+            echo "::error::Fedora ${{ matrix.release }} $CHANNEL ledger does not list $RELEASE as latest"
+            exit 1
+          }
+
   mark-failed:
     name: Mark failed Fedora channel builds
-    needs: [prepare, build, container-install, gate, publish]
+    needs: [prepare, build, container-install, gate, publish, record]
     if: failure()
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -750,7 +795,7 @@ jobs:
   # notify-failure job in publish-repo.yml.
   notify-failure:
     name: Announce a failed Fedora publish
-    needs: [prepare, build, container-install, gate, publish]
+    needs: [prepare, build, container-install, gate, publish, record]
     if: ${{ failure() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
