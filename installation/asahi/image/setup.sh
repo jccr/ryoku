@@ -102,6 +102,29 @@ ryoku_firstboot() {
   systemctl set-default multi-user.target
 }
 
+# The keyring built here holds a private signing key that would ship in the
+# public image and be shared by every Mac. Each one generates its own on first
+# boot, before the wizard first asks pacman for anything.
+pacman_keyring() {
+  rm -rf /etc/pacman.d/gnupg
+  cat >/etc/systemd/system/ryoku-pacman-init.service <<'EOF'
+[Unit]
+Description=Initialize the pacman keyring
+ConditionDirectoryNotEmpty=!/etc/pacman.d/gnupg
+Before=ryoku-firstboot.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/pacman-key --init
+ExecStart=/usr/bin/pacman-key --populate
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  systemctl enable ryoku-pacman-init.service
+}
+
 pacman_repos
 kernel_and_boot
 filesystems
@@ -110,3 +133,4 @@ accounts
 ryoku_firstboot
 sed -i -e '/^DisableSandbox$/d' /etc/pacman.conf
 rm -f /var/cache/pacman/pkg/*
+pacman_keyring
