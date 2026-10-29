@@ -8,23 +8,27 @@ import (
 
 func TestPreinstalledFlowLeavesTheDiskAlone(t *testing.T) {
 	t.Setenv("RYOKU_KB_PRESET", "")
-	var keys []string
-	for _, s := range stepsForVariant(variantAsahi) {
-		keys = append(keys, s.key)
-	}
 	want := []string{
 		"keyboard", "locale", "timezone", "network",
 		"compositor", "browser", "login-shell", "file-manager", "rashin", "apps",
 		"hostname", "administrator", "root-account", "other-people", "review",
 	}
-	if !reflect.DeepEqual(keys, want) {
-		t.Fatalf("Asahi flow = %v, want %v", keys, want)
+	for _, variant := range []string{variantAsahi, variantAsahiALARM} {
+		var keys []string
+		for _, s := range stepsForVariant(variant) {
+			keys = append(keys, s.key)
+		}
+		if !reflect.DeepEqual(keys, want) {
+			t.Fatalf("%s flow = %v, want %v", variant, keys, want)
+		}
 	}
 }
 
-func TestPreinstalledChoicesFollowTheFedoraTable(t *testing.T) {
-	if got := installerChoicesForVariant(variantAsahi).Edition; got != "fedora" {
-		t.Fatalf("Asahi choices come from %q, want the Fedora table", got)
+func TestPreinstalledChoicesFollowTheInstalledEdition(t *testing.T) {
+	for variant, want := range map[string]string{variantAsahi: "fedora", variantAsahiALARM: "arch"} {
+		if got := installerChoicesForVariant(variant).Edition; got != want {
+			t.Fatalf("%s choices come from %q, want %q", variant, got, want)
+		}
 	}
 }
 

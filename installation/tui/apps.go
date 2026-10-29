@@ -28,9 +28,15 @@ func flowIndex(flow []step, key string) int {
 // reads; a variant absent here installs Arch's own names.
 var editionTables = map[string]string{variantVoid: "void", variantAsahi: "fedora"}
 
+// sourceEditions names the edition a variant without its own table installs.
+var sourceEditions = map[string]string{variantAsahiALARM: "arch"}
+
 func installerChoicesForVariant(variant string) installerplan.EditionPlan {
 	edition, ok := editionTables[variant]
 	if !ok {
+		if source, ok := sourceEditions[variant]; ok {
+			variant = source
+		}
 		return installerplan.ResolveSource(variant)
 	}
 	table := filepath.Join(edition, "packages", "translations.tsv")

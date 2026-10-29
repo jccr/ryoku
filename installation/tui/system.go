@@ -29,9 +29,11 @@ import (
 const (
 	variantVoid    = "void"
 	variantCachyOS = "cachyos"
-	// The Asahi installer lays down Fedora Asahi Remix before this runs, so the
-	// wizard finishes an installed system instead of installing one.
-	variantAsahi = "asahi"
+	// The Asahi installer lays down Fedora Asahi Remix, or Ryoku's Arch Linux
+	// ARM image, before this runs, so the wizard finishes an installed system
+	// instead of installing one.
+	variantAsahi      = "asahi"
+	variantAsahiALARM = "asahi-alarm"
 )
 
 var variantMarkerPath = "/usr/share/ryoku/variant"
@@ -55,7 +57,7 @@ func isVoidVariant(variant string) bool {
 // isPreinstalledVariant reports a variant whose system is already on disk: no
 // disk, firmware or encryption steps, and the backend sets up the running root.
 func isPreinstalledVariant(variant string) bool {
-	return variant == variantAsahi
+	return variant == variantAsahi || variant == variantAsahiALARM
 }
 
 // run executes a command and returns its trimmed stdout, plus whether it worked.

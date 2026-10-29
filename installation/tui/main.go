@@ -607,9 +607,10 @@ func stepsForVariant(variant string) []step {
 
 // preinstalledSkips are the steps an installed system has already answered: the
 // hardware, disk and encryption choices belong to the installer that laid it
-// down.
+// down. Gaming goes too: on Arch it is the CachyOS layer, which needs an
+// x86-64-v3 machine.
 var preinstalledSkips = map[string]bool{
-	"hardware": true, "profile": true, "gpu": true,
+	"hardware": true, "profile": true, "gpu": true, "gaming": true,
 	"diskpick": true, "disk": true, "partitions": true, "encryption": true,
 }
 
@@ -2848,8 +2849,11 @@ func (m model) welcomeFrame() string {
 	if isVoidVariant(m.variant) {
 		liveImageLine = i18n.T("the live Void image now, and this installer turns it into")
 	}
-	if isPreinstalledVariant(m.variant) {
+	switch m.variant {
+	case variantAsahi:
 		liveImageLine = i18n.T("Fedora Asahi Remix now, and this installer turns it into")
+	case variantAsahiALARM:
+		liveImageLine = i18n.T("Arch Linux ARM now, and this installer turns it into")
 	}
 	card := sty().Border(border()).BorderForeground(cBlue).Padding(1, 3).Render(
 		bold(cBrand, i18n.T("Thank you for installing Ryoku")) + "\n\n" +

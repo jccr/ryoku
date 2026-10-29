@@ -63,13 +63,14 @@ but greys out Hyprland with its packaging reason, offers niri, Firefox or
 Chromium, and omits AUR-only apps. The snapshot toggle, all three login shells,
 and the four hardware profiles remain available from the Void package table.
 
-The `asahi` variant runs on a system that is already installed: the Asahi
-installer laid down Fedora Asahi Remix, and Ryoku's first-boot service starts the
-wizard there (`../asahi/`). It skips the hardware, profile, graphics, disk and
-encryption steps, reads its choices from the Fedora package table, hands the
-unticked Apps & tools rows over as `RYOKU_WITHOUT` component IDs, and its
-backend reports the `system`, `accounts`, `desktop` and `finish`
-install rows.
+The `asahi` and `asahi-alarm` variants run on a system that is already
+installed: the Asahi installer laid down Fedora Asahi Remix or Ryoku's Arch
+Linux ARM image, and Ryoku's first-boot service starts the wizard there
+(`../asahi/`). They skip the hardware, profile, graphics, Gaming, disk and
+encryption steps, hand the unticked Apps & tools rows over as `RYOKU_WITHOUT`
+component IDs, and their backend reports the `system`, `accounts`, `desktop`
+and `finish` install rows. `asahi` reads its choices from the Fedora package
+table; `asahi-alarm` offers the Arch choices.
 
 Some steps are conditional: the `gpu` (graphics mode) step matters only on a
 hybrid iGPU + dGPU laptop, and the pickers fall back to a small built-in list

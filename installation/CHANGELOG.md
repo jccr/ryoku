@@ -15,7 +15,8 @@
   `asahi` variant skips the hardware, disk and encryption steps, offers the
   Fedora edition's choices, and hands the keyboard, locale, time zone,
   hostname, accounts and desktop choices to a first-boot backend
-  (`tui/main.go`, `tui/system.go`, `tui/apps.go`).
+  (`tui/main.go`, `tui/system.go`, `tui/apps.go`). Its `asahi-alarm` variant
+  does the same on Arch Linux ARM with the Arch choices, and both skip Gaming.
 - **The Arch, CachyOS and Void ISOs have one edition-appropriate Gaming
   question.** It sits after Rashin, defaults to No, and is absent on Fedora.
   Arch offers the network-only, x86-64-v3 **Gaming with CachyOS** set and
