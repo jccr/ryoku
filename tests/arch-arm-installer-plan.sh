@@ -59,7 +59,10 @@ done
 for step in 'Trusting the [ryoku] package repository' 'Building the AUR extras' 'Adding the CachyOS kernel' 'Setting up GPU drivers'; do
   ! grep -Fq "$step" "$log" || fail "source lane still runs: $step"
 done
-! grep -Eq 'repo\.ryoku\.dev|pacman-key --populate ryoku' "$log" ||
+# the host the installer's [ryoku] channels live on, so the check follows it
+repo_host=$(sed -n 's|^[[:space:]]*stableServer[[:space:]]*= "https://\([^/]*\)/.*|\1|p' /repo/ryoku-shell-installer/engine.go)
+[ -n "$repo_host" ] || fail "could not read the [ryoku] host from engine.go"
+! grep -Fq -e "$repo_host" -e 'pacman-key --populate ryoku' "$log" ||
   fail "source lane touches the [ryoku] repository"
 
 package_command=$(grep -E 'DRYRUN: sudo -n pacman -Syu --needed --noconfirm .* go( |$)' "$log" || :)
