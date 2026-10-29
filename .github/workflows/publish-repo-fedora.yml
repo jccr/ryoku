@@ -86,7 +86,7 @@ jobs:
               pkgver=${raw_version//-/.}
               channel=stable
               ;;
-            refs/heads/*)
+            refs/heads/unstable-dev|refs/heads/aarch64-phase*)
               release=$(./bin/ryoku-release-version \
                 --channel unstable-dev \
                 --build-number "$GITHUB_RUN_NUMBER" \
@@ -95,7 +95,7 @@ jobs:
               channel=testing
               ;;
             *)
-              echo "::error::publish-repo-fedora runs on a v* tag or a branch; got $GITHUB_REF"
+              echo "::error::publish-repo-fedora runs on a v* tag (stable) or unstable-dev (testing); got $GITHUB_REF"
               exit 1
               ;;
           esac
@@ -713,7 +713,7 @@ jobs:
                 channel=stable
                 release_name=${GITHUB_REF#refs/tags/}
                 ;;
-              refs/heads/*)
+              refs/heads/unstable-dev|refs/heads/aarch64-phase*)
                 channel=testing
                 release_name=$(./bin/ryoku-release-version \
                   --channel unstable-dev \
