@@ -26,6 +26,7 @@ stage=$work/stage
 mnt=$work/mnt
 name=ryoku-alarm-$(date -u +%Y%m%d%H%M)
 loop=
+gnupg=
 
 log() { printf '## %s\n' "$*"; }
 
@@ -35,13 +36,14 @@ cleanup() {
     mountpoint -q "$m" && umount -R "$m"
   done
   [[ -z $loop ]] || losetup -d "$loop"
+  [[ -z $gnupg ]] || rm -rf "$gnupg"
 }
 trap cleanup EXIT
 
 # The tarball comes over plain HTTP from the mirror network, so only its
 # signature by the Arch Linux ARM build key vouches for it.
 fetch_tarball() {
-  local tarball=$work/${tarball_url##*/} gnupg
+  local tarball=$work/${tarball_url##*/}
   log "downloading $tarball_url"
   curl -fL --retry 3 -o "$tarball" -z "$tarball" "$tarball_url"
   curl -fL --retry 3 -o "$tarball.sig" "$tarball_url.sig"
@@ -51,6 +53,7 @@ fetch_tarball() {
     | grep -q "^\[GNUPG:\] VALIDSIG .* $alarm_key\$" \
     || { echo "the Arch Linux ARM tarball is not signed by $alarm_key" >&2; exit 1; }
   rm -rf "$gnupg"
+  gnupg=
   log "tarball $(sha256sum "$tarball" | cut -d' ' -f1)"
   TARBALL=$tarball
 }
@@ -80,6 +83,7 @@ prepare_root() {
   log 'setting up the root'
   arch-chroot "$root" /var/tmp/ryoku-image/setup.sh
   rm -rf "$root/var/tmp/ryoku-image"
+  umount -R "$root"
 }
 
 pack_root() {
@@ -130,7 +134,6 @@ mkdir -p "$work"
 fetch_tarball
 new_ids
 prepare_root
-umount -R "$root"
 pack_root
 pack_esp
 write_zip
