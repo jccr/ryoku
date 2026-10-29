@@ -29,6 +29,7 @@ set -euo pipefail
 : "${RYOKU_TIMEZONE:=UTC}"
 : "${RYOKU_LOGIN_SHELL:=bash}"
 : "${RYOKU_RASHIN:=1}"
+: "${RYOKU_FIRSTBOOT_STATE:=/var/lib/ryoku-firstboot}"
 # asahi on Fedora Asahi Remix, asahi-alarm on Arch Linux ARM.
 : "${RYOKU_VARIANT:=$(cat /usr/share/ryoku/variant 2>/dev/null || printf asahi)}"
 export RYOKU_TARGET_ROOT=/ RYOKU_TARGET_CHROOT=chroot
@@ -41,6 +42,7 @@ source "$RYOKU_BACKEND_LIB/accounts.sh"
 source "$RYOKU_BACKEND_LIB/chroot.sh"
 
 sudoers=/etc/sudoers.d/90-ryoku-firstboot
+accounts_stamp=$RYOKU_FIRSTBOOT_STATE/accounts
 
 install_packages() {
   if [[ $RYOKU_VARIANT == asahi-alarm ]]; then
@@ -76,11 +78,24 @@ firstboot_system() {
   run hostnamectl set-hostname "$RYOKU_HOSTNAME"
 }
 
+# A run that failed later left its accounts behind, and creating them again
+# would fail. The retry keeps them, takes the administrator it made, and gives
+# it the password just entered.
 firstboot_accounts() {
   step accounts
   # The accounts are created with their login shell, so it lands first.
   install_packages "$RYOKU_LOGIN_SHELL"
+  if [[ -r $accounts_stamp ]]; then
+    RYOKU_USERNAME=$(cat "$accounts_stamp")
+    log 'accounts: kept from the earlier run (administrator %s)' "$RYOKU_USERNAME"
+    ryoku_account_validate_hash "$RYOKU_USERNAME" "$RYOKU_PASSWORD_HASH"
+    printf '%s:%s\n' "$RYOKU_USERNAME" "$RYOKU_PASSWORD_HASH" | run_secret \
+      "chpasswd -e ($RYOKU_USERNAME:hash via stdin)" chpasswd -e
+    return
+  fi
   ryoku_accounts_create
+  run mkdir -p "$RYOKU_FIRSTBOOT_STATE"
+  printf '%s\n' "$RYOKU_USERNAME" | write_file "$accounts_stamp"
 }
 
 # The shell installer runs as the administrator and asks sudo for root, with no
@@ -95,15 +110,10 @@ firstboot_desktop() {
   printf '%s ALL=(ALL) NOPASSWD: ALL\n' "$user" | write_file "$sudoers"
   run chmod 0440 "$sudoers"
   run loginctl enable-linger "$user"
-  if [[ -z $RYOKU_DRYRUN ]]; then
-    uid=$(id -u "$user")
-    for _ in $(seq 50); do
-      [[ -S /run/user/$uid/bus ]] && break
-      sleep 0.2
-    done
-  else
-    uid=1000
-  fi
+  uid=1000
+  [[ -n $RYOKU_DRYRUN ]] || uid=$(id -u "$user")
+  # Returns once the user manager, and with it the session bus, is up.
+  run systemctl start "user@$uid.service"
   log 'desktop: %s from %s' "$RYOKU_COMPOSITOR" "$ref"
   run runuser -u "$user" -- env HOME="/home/$user" XDG_RUNTIME_DIR="/run/user/$uid" \
     DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$uid/bus" RYOKU_ASCII=1 \
@@ -117,6 +127,7 @@ firstboot_finish() {
   step finish
   run loginctl disable-linger "$RYOKU_USERNAME"
   run rm -f "$sudoers"
+  run rm -rf "$RYOKU_FIRSTBOOT_STATE"
   run systemctl disable ryoku-firstboot.service
   run systemctl set-default graphical.target
 }
