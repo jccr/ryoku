@@ -1071,20 +1071,6 @@ var spinFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧"
 // installSteps names the backend's install phases for the progress panel. It is
 // a function, not a package-level var, so the names resolve in the language
 // main() picked (a var initializer would run before i18n.Use).
-func installSteps(variant string) []string {
-	if isPreinstalledVariant(variant) {
-		return []string{
-			i18n.T("Setting up the system"), i18n.T("Creating the accounts"),
-			i18n.T("Installing the Ryoku desktop"), i18n.T("Finishing up"),
-		}
-	}
-	return []string{
-		i18n.T("Partitioning the disk"), i18n.T("Creating filesystems and btrfs subvolumes"),
-		i18n.T("Mounting the target"), i18n.T("Installing the base system"),
-		i18n.T("Configuring the system"), i18n.T("Installing the Limine bootloader"),
-	}
-}
-
 func newModel() model {
 	variant := sysVariant()
 	m := model{

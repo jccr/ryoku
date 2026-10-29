@@ -1386,20 +1386,6 @@ func killBackend(cmd *exec.Cmd) {
 	}
 }
 
-// stepIndex maps a backend @@RYOKU_STEP id to an install row.
-func stepIndex(variant, id string) (int, bool) {
-	order := []string{"partition", "filesystems", "mount", "pacstrap", "configure", "bootloader"}
-	if isPreinstalledVariant(variant) {
-		order = []string{"system", "accounts", "desktop", "finish"}
-	}
-	for i, s := range order {
-		if s == id {
-			return i, true
-		}
-	}
-	return 0, false
-}
-
 // ansiCSI matches an ANSI CSI escape (colours, cursor moves, line erase) -- what
 // pacman/curl progress bars spray alongside carriage returns.
 var ansiCSI = regexp.MustCompile("\x1b\\[[0-9;?]*[ -/]*[@-~]")
