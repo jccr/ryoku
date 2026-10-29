@@ -202,6 +202,7 @@ rtkit	rtkit	desktop
 rust	rust	desktop	
 ryogami	ryogami	desktop	Ryoku-owned RPM.
 ryoku	ryoku	desktop	Ryoku-owned RPM.
+ryoku-asahi-firstboot	ryoku-asahi-firstboot	system	Ryoku-owned RPM, shipped to a Mac's first boot outside the desktop set.
 ryoku-blobs	ryoku-blobs	desktop	Ryoku-owned RPM.
 ryoku-cursor-material	ryoku-cursor-material	desktop	Ryoku-owned RPM.
 ryoku-cursors	ryoku-extras	desktop	Bundled by the Ryoku extras RPM.
